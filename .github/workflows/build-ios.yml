@@ -10,6 +10,9 @@ on:
       - "static/**"
       - ".github/workflows/build-ios.yml"
 
+permissions:
+  contents: write        # lets the build publish Nova.ipa as a download under "Releases"
+
 jobs:
   build:
     runs-on: macos-15
@@ -58,3 +61,11 @@ jobs:
           name: Nova-ipa
           path: ios/Nova.ipa
           retention-days: 30
+
+      - name: Publish Nova.ipa under Releases (downloads straight to the iPhone, no ZIP)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --yes --cleanup-tag -R "$GITHUB_REPOSITORY" || true
+          gh release create latest ios/Nova.ipa -R "$GITHUB_REPOSITORY" --title "Nova iPhone app" \
+            --notes "Tap Nova.ipa below to download it. Built $(date -u '+%Y-%m-%d %H:%M') UTC." --latest
