@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Nova</title>
+<meta name="theme-color" content="#06070B">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Nova">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/static/icon-180.png">
+<link rel="icon" href="/static/icon-192.png">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="empty">
+  <div class="edge" aria-hidden="true"></div>
+  <div class="bg" aria-hidden="true"></div>
+
+  <header class="top pywebview-drag-region">
+    <div class="brand">
+      <span class="name" id="name">Nova</span>
+      <span class="status" id="status"><i></i><b>Ready</b></span>
+      <span class="viewing local-only" id="viewing" hidden><i></i><span data-i18n>Phone is viewing</span></span>
+    </div>
+    <div class="tabs phone-only" id="tabs" hidden>
+      <button class="on" data-tab="chat"><span data-i18n>Chat</span></button><button data-tab="screen"><span data-i18n>Screen</span></button>
+    </div>
+    <div class="tools">
+      <button class="icon" id="btnFull" title="Fullscreen (F11)" aria-label="Fullscreen">
+        <svg class="i-full" viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>
+        <svg class="i-exit" viewBox="0 0 24 24"><path d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5"/></svg></button>
+      <button class="icon" id="btnNew" title="New conversation" aria-label="New conversation">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+      <button class="icon" id="btnSettings" title="Settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+      <span class="win-only sep"></span>
+      <button class="icon win-only" id="btnMin" title="Minimize" aria-label="Minimize">
+        <svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg></button>
+      <button class="icon win-only" id="btnClose" title="Hide (Ctrl+Alt+Space brings it back)" aria-label="Close">
+        <svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg></button>
+    </div>
+  </header>
+
+  <main id="feed" class="feed" aria-live="polite"></main>
+
+  <section class="hero" id="hero">
+    <h1 id="greeting">Good evening</h1>
+    <p><span data-i18n>What can I do for you?</span></p>
+    <div class="chips" id="chips">
+      <button><span data-i18n>Tidy up my Downloads folder</span></button>
+      <button><span data-i18n>What's taking up my disk space?</span></button>
+      <button><span data-i18n>Open YouTube and play lo-fi music</span></button>
+      <button><span data-i18n>Write a note in Notepad with today's to-dos</span></button>
+    </div>
+  </section>
+
+  <div class="orb-wrap" id="orbWrap"><canvas id="orb"></canvas></div>
+
+  <!-- Fullscreen HUD -->
+  <section class="hud" id="hud" aria-live="polite">
+    <div class="hud-grid" aria-hidden="true"></div>
+    <div class="hud-user" id="hudUser"></div>
+    <canvas id="hudCanvas" aria-hidden="true"></canvas>
+    <div class="hud-status" id="hudStatus">ONLINE</div>
+    <div class="hud-caption" id="hudCaption"></div>
+  </section>
+
+  <form class="composer" id="composer" autocomplete="off">
+    <div class="pill">
+      <textarea id="input" rows="1" placeholder="Ask Nova anything…" enterkeyhint="send"></textarea>
+      <button type="button" class="round mic" id="btnMic" title="Speak" aria-label="Speak" hidden>
+        <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+      <button type="submit" class="round send" id="btnSend" title="Send" aria-label="Send">
+        <svg class="i-send" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+        <svg class="i-stop" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2.5"/></svg></button>
+    </div>
+  </form>
+
+  <!-- Screen tab: remote control from the phone -->
+  <section class="remote" id="remote" hidden>
+    <div class="viewport" id="viewport">
+      <canvas id="rcanvas"></canvas>
+      <div class="rmsg" id="rmsg"><span data-i18n>Connecting to your PC…</span></div>
+      <div class="screens" id="screens" hidden></div>
+    </div>
+    <div class="lockbar" id="lockbar" hidden>
+      <span><i></i><span data-i18n>Nova is using your PC. View only.</span></span><button id="lockStop"><span data-i18n>Stop Nova</span></button>
+    </div>
+    <div class="keyrow" id="keyrow" hidden>
+      <button data-k="esc">Esc</button><button data-k="tab">Tab</button><button data-k="win">Win</button>
+      <button data-k="enter">Enter</button><button data-k="backspace">⌫</button><button data-k="delete"><span data-i18n>Del</span></button>
+      <button data-k="left">←</button><button data-k="up">↑</button><button data-k="down">↓</button><button data-k="right">→</button>
+      <button data-k="ctrl+c"><span data-i18n>Copy</span></button><button data-k="ctrl+v"><span data-i18n>Paste</span></button><button data-k="ctrl+z"><span data-i18n>Undo</span></button>
+      <button data-k="ctrl+a"><span data-i18n>Select all</span></button><button data-k="alt+tab">Alt+Tab</button><button data-k="win+d">Desktop</button>
+      <button data-k="volumeup">Vol +</button><button data-k="volumedown">Vol −</button><button data-k="volumemute"><span data-i18n>Mute</span></button>
+    </div>
+    <div class="rbar">
+      <button class="rbtn land-only" id="rBack" aria-label="Back to chat" title="Chat">
+        <svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg><span><span data-i18n>Chat</span></span></button>
+      <button class="rbtn" id="rKbd" aria-label="Keyboard" title="Keyboard">
+        <svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg><span><span data-i18n>Type</span></span></button>
+      <button class="rbtn" id="rKeys" aria-label="Special keys" title="Special keys">
+        <svg viewBox="0 0 24 24"><path d="M9 6H6a3 3 0 1 0 3 3V6zm0 0h6m-6 0v12m6-12V9a3 3 0 1 0 3-3h-3zm0 0v12m-6 0H6a3 3 0 1 0 3 3v-3zm0 0h6m0 0v3a3 3 0 1 0 3-3h-3z"/></svg><span><span data-i18n>Keys</span></span></button>
+      <button class="rbtn" id="rScroll" aria-label="Scroll mode" title="Scroll mode">
+        <svg viewBox="0 0 24 24"><path d="M12 4v16M8 8l4-4 4 4M8 16l4 4 4-4"/></svg><span><span data-i18n>Scroll</span></span></button>
+      <button class="rbtn" id="rRight" aria-label="Right-click next tap" title="Right-click">
+        <svg viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="6"/><path d="M12 3v7M12 10h6"/></svg><span><span data-i18n>Right</span></span></button>
+      <button class="rbtn" id="rHd" aria-label="Sharper picture" title="HD">
+        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M7 9v6M7 12h3M10 9v6M14 9v6h1.5a2.5 2.5 0 0 0 0-5V9H14"/></svg><span>HD</span></button>
+      <button class="rbtn" id="rFit" aria-label="Fit screen" title="Fit">
+        <svg viewBox="0 0 24 24"><path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"/></svg><span><span data-i18n>Fit</span></span></button>
+      <button class="rbtn native-only" id="rRotate" aria-label="Rotate" title="Rotate">
+        <svg viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="14" rx="2"/><path d="M14 3a7 7 0 0 1 7 7M21 10l-2-2M21 10l2-2"/></svg><span><span data-i18n>Rotate</span></span></button>
+    </div>
+    <input id="rkbd" class="rkbd" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" aria-label="Type on your PC">
+  </section>
+
+  <!-- First-run setup (PC) -->
+  <div class="sheet" id="setup" hidden>
+    <div class="card scroll">
+      <h2><span data-i18n>Let's set up</span><span class="nm">Nova</span></h2>
+      <p class="muted"><span data-i18n>First, choose where Nova's brain runs.</span></p>
+      <div class="brains" data-for="setup">
+        <button type="button" class="brain on" data-brain="local"><b><span data-i18n>This PC</span></b><span><span data-i18n>Free · private · works offline</span></span></button>
+        <button type="button" class="brain" data-brain="claude"><b><span data-i18n>Claude</span></b><span><span data-i18n>Smartest · needs paid API credit</span></span></button>
+      </div>
+      <div class="brain-local"><div class="localbox" id="setupLocal"></div></div>
+      <div class="brain-claude" hidden>
+        <label><span data-i18n>Claude API key</span> <span class="muted">(<a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener"><span data-i18n>get one</span></a>)</span>
+          <input id="setKey" type="password" placeholder="sk-ant-…" autocomplete="off"></label>
+      </div>
+      <label><span data-i18n>Assistant name</span><input id="setName" type="text" maxlength="24" value="Nova"></label>
+      <label><span data-i18n>iPhone passcode</span> <span class="muted"><span data-i18n>(optional, 6+ characters)</span></span>
+        <input id="setPass" type="password" placeholder="Used to connect your phone" autocomplete="new-password"></label>
+      <p class="err" id="setupErr"></p>
+      <button class="primary" id="setupGo"><span data-i18n>Start</span></button>
+    </div>
+  </div>
+
+  <!-- Phone sign-in -->
+  <div class="sheet" id="login" hidden>
+    <div class="card">
+      <h2><span data-i18n>Connect to</span><span class="nm">Nova</span></h2>
+      <p class="muted"><span data-i18n>Enter the passcode you set on your PC.</span></p>
+      <label><span data-i18n>Passcode</span><input id="loginPass" type="password" autocomplete="current-password"></label>
+      <p class="err" id="loginErr"></p>
+      <button class="primary" id="loginGo"><span data-i18n>Connect</span></button>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div class="sheet" id="settings" hidden>
+    <div class="card scroll">
+      <div class="row-head"><h2><span data-i18n>Settings</span></h2><button class="icon" id="settingsClose" aria-label="Close">
+        <svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg></button></div>
+
+      <div class="local-only">
+        <label><span data-i18n>Language</span><select id="sLang"><option value="auto" data-i18n>Automatic (Windows)</option><option value="de" data-noi18n>Deutsch</option><option value="en" data-noi18n>English</option></select></label>
+        <label><span data-i18n>Assistant name</span><input id="sName" type="text" maxlength="24"></label>
+        <div class="setlabel"><span data-i18n>Brain</span></div>
+        <div class="brains" data-for="settings">
+          <button type="button" class="brain" data-brain="local"><b><span data-i18n>This PC</span></b><span><span data-i18n>Free · private</span></span></button>
+          <button type="button" class="brain" data-brain="claude"><b><span data-i18n>Claude</span></b><span><span data-i18n>Smartest · paid</span></span></button>
+        </div>
+        <div class="brain-local"><div class="localbox" id="settingsLocal"></div>
+          <div class="toggle"><span><span data-i18n>Let the local brain see screenshots</span><small><span data-i18n>Turn off on slow PCs (it still reads buttons by name)</span></small></span><input type="checkbox" id="sVision"></div>
+        </div>
+        <div class="brain-claude" hidden>
+          <label><span data-i18n>Claude model</span><select id="sModel">
+              <option value="claude-sonnet-5-5" data-i18n>Claude Sonnet 5.5 · fast</option>
+              <option value="claude-opus-5-5" data-i18n>Claude Opus 5.5 · smartest</option>
+            </select></label>
+          <label><span data-i18n>API key</span><input id="sKey" type="password" placeholder="Leave empty to keep the current key" autocomplete="off"></label>
+        </div>
+        <div class="toggle"><span><span data-i18n>Allow PowerShell commands</span><small><span data-i18n>Faster file and system tasks</span></small></span><input type="checkbox" id="sShell"></div>
+        <div class="toggle"><span><span data-i18n>Ask before each command</span><small><span data-i18n>You tap Allow first</span></small></span><input type="checkbox" id="sConfirm"></div>
+        <h3><span data-i18n>Hotkeys</span></h3>
+        <div class="hk-row"><span><span data-i18n>Ask</span><small data-i18n>Opens the chat ready to type, from any app</small></span>
+          <button type="button" class="hk" id="hkAsk" data-key="ask_hotkey"></button></div>
+        <div class="hk-row"><span><span data-i18n>Show / hide window</span><small></small></span>
+          <button type="button" class="hk" id="hkToggle" data-key="hotkey"></button></div>
+        <div class="hk-row"><span><span data-i18n>Talk</span><small data-i18n>Start talking, it stops when you pause</small></span>
+          <button type="button" class="hk" id="hkTalk" data-key="talk_hotkey"></button></div>
+        <p class="muted small hk-help" data-i18n>Click a box, then press your key combination. Esc cancels, Backspace turns it off.</p>
+        <div class="toggle"><span><span data-i18n>Keep window on top</span></span><input type="checkbox" id="sTop"></div>
+        <div class="toggle"><span><span data-i18n>Desktop widget</span><small><span data-i18n>Round particle sphere you can drag anywhere on the desktop</span></small></span><input type="checkbox" id="sWidget"></div>
+        <div class="toggle"><span><span data-i18n>iPhone access</span><small><span data-i18n>Restart Nova after changing</span></small></span><input type="checkbox" id="sPhone"></div>
+        <div class="toggle"><span><span data-i18n>Screen tab on iPhone</span><small><span data-i18n>See and control this PC from your phone</span></small></span><input type="checkbox" id="sRemote"></div>
+      </div>
+      <div class="local-only">
+      <h3><span data-i18n>Look</span></h3>
+      <div class="colorbox">
+        <div class="color-top">
+          <div class="swatch-col"><div class="swatch" id="sSwatch"></div>
+            <input type="text" id="sColor" value="#2896FF" maxlength="7" spellcheck="false" autocomplete="off" aria-label="Orb colour"></div>
+          <div class="presets" id="presets">
+            <button style="--c:#2896FF" data-c="#2896FF" title="Blue"></button><button style="--c:#00E5FF" data-c="#00E5FF" title="Cyan"></button>
+            <button style="--c:#8B5CFF" data-c="#8B5CFF" title="Purple"></button><button style="--c:#FF3B9A" data-c="#FF3B9A" title="Pink"></button>
+            <button style="--c:#FF4040" data-c="#FF4040" title="Red"></button><button style="--c:#FFB02E" data-c="#FFB02E" title="Gold"></button>
+            <button style="--c:#2EF28A" data-c="#2EF28A" title="Green"></button><button style="--c:#F2F6FF" data-c="#F2F6FF" title="White"></button>
+          </div>
+        </div>
+        <label class="rgb"><span>R</span><input type="range" min="0" max="255" id="sR"><b id="vR">0</b></label>
+        <label class="rgb"><span>G</span><input type="range" min="0" max="255" id="sG"><b id="vG">0</b></label>
+        <label class="rgb"><span>B</span><input type="range" min="0" max="255" id="sB"><b id="vB">0</b></label>
+      </div>
+      <div class="toggle"><span><span data-i18n>Show transcript</span><small><span data-i18n>Speech bubble under the widget and text in fullscreen</span></small></span><input type="checkbox" id="sTranscript"></div>
+      </div>
+
+      <h3><span data-i18n>Voice</span></h3>
+      <div class="toggle"><span><span data-i18n>Read replies aloud</span></span><input type="checkbox" id="sSpeak"></div>
+      <div class="local-only">
+        <div class="toggle"><span><span data-i18n>Greet me when Nova starts</span><small data-i18n>“Good day, sir. What can I do for you?”</small></span><input type="checkbox" id="sGreet"></div>
+        <div class="setlabel"><span data-i18n>Voice engine</span></div>
+        <div class="engines" id="engines">
+          <button type="button" class="brain" data-engine="windows"><b>Windows</b><span data-i18n>Built in · robotic</span></button>
+          <button type="button" class="brain" data-engine="piper"><b>Piper</b><span data-i18n>Natural · free · offline</span></button>
+          <button type="button" class="brain" data-engine="eleven"><b>ElevenLabs</b><span data-i18n>Premium · paid · online</span></button>
+        </div>
+        <div class="eng-piper" hidden><div class="localbox" id="piperBox"></div></div>
+        <div class="eng-eleven" hidden>
+          <label><span data-i18n>ElevenLabs API key</span> <span class="muted">(<a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" rel="noopener"><span data-i18n>get one</span></a>)</span>
+            <input id="sElevenKey" type="password" placeholder="Leave empty to keep the current key" autocomplete="off"></label>
+          <label><span data-i18n>Voice</span><select id="sElevenVoice"><option value="" data-i18n>Load voices first</option></select></label>
+          <button type="button" class="ghost small-btn" id="elevenLoad"><span data-i18n>Load my voices</span></button>
+          <label><span data-i18n>Model</span><select id="sElevenModel"></select></label>
+        </div>
+      </div>
+      <div class="eng-windows">
+        <label><span data-i18n>Voice</span><select id="sVoice"><option value="" data-i18n>System default</option></select></label>
+      </div>
+      <label class="rgb"><span><span data-i18n>Speed</span></span><input type="range" min="0.5" max="2" step="0.05" id="sRate"><b id="vRate">1.0</b></label>
+      <label class="rgb eng-windows"><span><span data-i18n>Pitch</span></span><input type="range" min="0" max="2" step="0.05" id="sPitch"><b id="vPitch">1.0</b></label>
+      <label class="rgb"><span><span data-i18n>Volume</span></span><input type="range" min="0" max="1" step="0.05" id="sVolume"><b id="vVolume">1.0</b></label>
+      <button type="button" class="ghost" id="voiceTest"><span data-i18n>▶ Test voice</span></button>
+
+      <div class="local-only">
+        <h3><span data-i18n>Voice input</span></h3>
+        <label><span data-i18n>Speech recognition</span><select id="sStt">
+          <option value="tiny" data-i18n>Fast · less accurate (75 MB)</option>
+          <option value="base" data-i18n>Balanced (145 MB)</option>
+          <option value="small" data-i18n>Accurate · slower (480 MB)</option></select></label>
+        <div class="toggle"><span><span data-i18n>Send right away</span><small data-i18n>Off: the text lands in the chat box so you can check it first</small></span><input type="checkbox" id="sAutoSend"></div>
+        <p class="muted small" data-i18n>Runs on your PC with Whisper. The model downloads once on first use.</p>
+      </div>
+
+      <div class="local-only phone-box">
+        <h3><span data-i18n>Your iPhone</span></h3>
+        <label><span data-i18n>Phone passcode</span><input id="sPass" type="password" placeholder="Set or change (6+ characters)" autocomplete="new-password"></label>
+        <ol class="muted small">
+          <li><span data-i18n>On your iPhone, open Safari and go to:</span></li>
+        </ol>
+        <div id="urls" class="urls"></div>
+        <ol class="muted small" start="2">
+          <li><span data-i18n>Tap Share →</span> <b><span data-i18n>Add to Home Screen</span></b><span data-i18n>. Nova now opens like an app.</span></li>
+          <li><span data-i18n>Away from home? Install</span> <b>Tailscale</b> <span data-i18n>on both devices and use the Tailscale address.</span></li>
+        </ol>
+      </div>
+      <p class="err" id="settingsErr"></p>
+      <button class="primary local-only" id="settingsSave"><span data-i18n>Save</span></button>
+      <button class="ghost native-only" id="changePc"><span data-i18n>Connect to a different PC</span></button>
+      <button class="ghost phone-only" id="signOut"><span data-i18n>Disconnect this phone</span></button>
+    </div>
+  </div>
+
+  <script type="module" src="/static/app.js"></script>
+</body>
+</html>

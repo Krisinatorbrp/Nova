@@ -1,0 +1,60 @@
+# Builds the Nova iPhone app (Nova.ipa) on GitHub's Mac computers. No Mac needed on your side.
+# Run it from the "Actions" tab of your GitHub repository, then download "Nova-ipa".
+name: Build iPhone app
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "ios/**"
+      - "static/**"
+      - ".github/workflows/build-ios.yml"
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use the newest Xcode (26+ has Apple's on-device AI for offline mode)
+        run: |
+          XC=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -n 1)
+          if [ -n "$XC" ]; then sudo xcode-select -s "$XC"; fi
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Create the Xcode project
+        working-directory: ios
+        run: xcodegen generate
+
+      - name: Build the app
+        working-directory: ios
+        shell: bash
+        run: |
+          set -o pipefail
+          EXTRA=()
+          # the on-device AI framework is linked "weakly": the app still opens on older iOS versions
+          if [ -d "$(xcrun --sdk iphoneos --show-sdk-path)/System/Library/Frameworks/FoundationModels.framework" ]; then
+            EXTRA+=(OTHER_LDFLAGS="-weak_framework FoundationModels")
+          fi
+          xcodebuild -project Nova.xcodeproj -target Nova -configuration Release -sdk iphoneos \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            "${EXTRA[@]}" SYMROOT="$PWD/build" build | tail -n 60
+
+      - name: Package Nova.ipa
+        working-directory: ios
+        run: |
+          mkdir -p Payload
+          cp -R build/Release-iphoneos/Nova.app Payload/
+          zip -qry Nova.ipa Payload
+          ls -lh Nova.ipa
+
+      - name: Upload Nova.ipa
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nova-ipa
+          path: ios/Nova.ipa
+          retention-days: 30

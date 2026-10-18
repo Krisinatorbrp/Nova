@@ -1,0 +1,57 @@
+# XcodeGen project description. GitHub Actions turns this into an Xcode project and builds Nova.ipa.
+name: Nova
+options:
+  bundleIdPrefix: com.nova
+  deploymentTarget:
+    iOS: "16.0"
+targets:
+  Nova:
+    type: application
+    platform: iOS
+    sources:
+      - Nova
+      # the interface, built into the app for offline mode (the AI on the iPhone)
+      - path: ../static
+        type: folder
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nova.assistant
+        PRODUCT_NAME: Nova
+        MARKETING_VERSION: "1.1"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGNING_ALLOWED: NO
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGN_IDENTITY: ""
+    info:
+      path: Nova/Info.plist
+      properties:
+        CFBundleDisplayName: Nova
+        LSRequiresIPhoneOS: true
+        UILaunchScreen:
+          UIColorName: LaunchBG
+        UIRequiresFullScreen: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIStatusBarStyle: UIStatusBarStyleLightContent
+        UIViewControllerBasedStatusBarAppearance: true
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+          NSAllowsLocalNetworking: true
+        NSLocalNetworkUsageDescription: Nova looks for your PC on your Wi-Fi and connects to it.
+        NSBonjourServices:
+          - _nova._tcp
+        NSMicrophoneUsageDescription: Nova listens when you tap the mic so you can talk to your PC.
+        NSSpeechRecognitionUsageDescription: Nova turns what you say into text for your assistant.
+        ITSAppUsesNonExemptEncryption: false
