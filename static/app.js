@@ -198,6 +198,9 @@ function render(ev, replay = false) {
     case 'reset':
       feed.innerHTML = ''; activity = null; body.classList.add('empty');
       break;
+    case 'progress':                                    // the browser / iPhone AI is loading
+      $('#status b').textContent = ev.text; $('#hudStatus').textContent = ev.text;
+      break;
   }
 }
 
@@ -742,3 +745,5 @@ async function greetOnce() {
   say(r.say, false, () => api('/api/greet/fallback', { text: r.say }).catch(() => {}));
 }
 boot();
+// Nova as a website: works offline after the first visit (the AI model is stored by the browser too)
+if (window.__novaWeb && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

@@ -1,19 +1,26 @@
-// "On this iPhone" mode: when the PC can't be reached, the iPhone app shows this same interface
-// from inside the app (nova://app/) and answers with the AI that runs on the iPhone itself
-// (Apple's on-device model). No PC, no internet needed.
+// Nova without the PC. Two ways:
+//  - iPhone app, PC not reachable: the app shows this interface from inside itself (nova://app/)
+//    and answers with Apple's on-device AI (through the native bridge).
+//  - Nova as a website (GitHub Pages): the AI runs right in the browser (web.js, WebGPU).
 //
 // It stands in for the PC's server: /api/* requests and the live connection are answered here,
 // and questions go to the app through the native bridge (post → Swift → window.novaNative.llm).
 import { post } from './native.js';
 
 export const onDevice = location.protocol === 'nova:' || !!window.__novaDeviceTest;   // (test hook)
+export const onWeb = !onDevice && !!window.__novaWeb;        // set by the published website
 
-if (onDevice) install();
+if (onDevice || onWeb) install(onWeb ? 'web' : 'device');
 
-function install() {
+function install(kind) {
   const qs = new URLSearchParams(location.search);
   const de = (navigator.language || 'en').toLowerCase().startsWith('de');
-  const name = (qs.get('name') || 'Nova').slice(0, 24);
+  if (qs.get('name')) { try { localStorage.setItem('nova_name', qs.get('name')); } catch {} }
+  let saved = null; try { saved = localStorage.getItem('nova_name'); } catch {}
+  const name = (qs.get('name') || saved || 'Nova').slice(0, 24);
+  // where the answers come from: Apple's AI in the app, or the browser's own (loaded on first use)
+  let webBrain = null;
+  const brain = () => webBrain || (webBrain = import('./web.js'));
   const dev = { history: [], busy: false, sock: null };
 
   // ---------- the server's API, answered locally ----------
@@ -58,12 +65,17 @@ function install() {
         if (dev.busy) return emit({ type: 'error', text: de ? 'Moment, ich bin noch bei der letzten Frage.' : "One moment, I'm still on the last question." });
         emit({ type: 'user', text, from: 'device' });
         emit({ type: 'state', state: 'thinking' });
-        post({ type: 'llm', action: 'ask', text, lang: de ? 'de' : 'en', name });
+        if (kind === 'web') brain().then(b => b.ask(text, de, name, emit)).catch(e => {
+          emit({ type: 'error', text: String(e.message || e) }); emit({ type: 'state', state: 'idle' });
+        });
+        else post({ type: 'llm', action: 'ask', text, lang: de ? 'de' : 'en', name });
       } else if (m.type === 'stop') {
-        post({ type: 'llm', action: 'stop' });
+        if (kind === 'web') brain().then(b => b.stop());
+        else post({ type: 'llm', action: 'stop' });
       } else if (m.type === 'reset') {
         dev.history = [];
-        post({ type: 'llm', action: 'reset' });
+        if (kind === 'web') brain().then(b => b.reset());
+        else post({ type: 'llm', action: 'reset' });
         emit({ type: 'reset' });
       }
     }
@@ -80,8 +92,13 @@ function install() {
     document.body.classList.add('on-device');
     const b = document.createElement('span');
     b.className = 'device-badge';
-    b.title = de ? 'PC nicht erreichbar: die KI auf dem iPhone antwortet' : "PC not reachable: the AI on your iPhone answers";
-    b.innerHTML = `<i></i>${de ? 'iPhone-KI' : 'iPhone AI'}`;
+    if (kind === 'web') {
+      b.title = de ? 'Die KI läuft direkt in diesem Browser' : 'The AI runs right in this browser';
+      b.innerHTML = `<i></i>${de ? 'Browser-KI' : 'Browser AI'}`;
+    } else {
+      b.title = de ? 'PC nicht erreichbar: die KI auf dem iPhone antwortet' : "PC not reachable: the AI on your iPhone answers";
+      b.innerHTML = `<i></i>${de ? 'iPhone-KI' : 'iPhone AI'}`;
+    }
     document.querySelector('.brand')?.appendChild(b);
   };
   if (document.body) badge(); else addEventListener('DOMContentLoaded', badge);

@@ -1,0 +1,65 @@
+# Publishes Nova as a website (GitHub Pages): the AI runs right in the browser, no PC needed.
+# Open https://<your-name>.github.io/Nova/ on the iPhone, then Share → Add to Home Screen.
+# One-time: Settings → Pages → Source: "GitHub Actions".
+name: Publish website
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "static/**"
+      - ".github/workflows/publish-web.yml"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the website
+        run: |
+          mkdir -p _site
+          cp -R static _site/static
+          cp static/sw.js _site/sw.js
+          # the in-browser AI library, served from the website itself (works offline, no CDN needed)
+          mkdir -p _site/static/vendor
+          npm pack @mlc-ai/web-llm@0.2.79 --silent
+          tar xzf mlc-ai-web-llm-0.2.79.tgz
+          cp package/lib/index.js _site/static/vendor/web-llm.js
+          python3 - <<'PY'
+          import json, re
+          html = open("static/index.html", encoding="utf-8").read()
+          html = html.replace('"/static/', '"static/').replace('"/manifest.json"', '"manifest.json"')
+          # tells the page it's the website version: the AI runs in the browser
+          html = html.replace('<script type="module"', '<script>window.__novaWeb = true;</script>\n  <script type="module"', 1)
+          open("_site/index.html", "w", encoding="utf-8").write(html)
+          m = json.load(open("static/manifest.json", encoding="utf-8"))
+          m["start_url"] = "./"
+          m["scope"] = "./"
+          for icon in m.get("icons", []):
+              icon["src"] = icon["src"].lstrip("/")
+          json.dump(m, open("_site/manifest.json", "w", encoding="utf-8"), indent=2)
+          PY
+          touch _site/.nojekyll
+          ls -la _site
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

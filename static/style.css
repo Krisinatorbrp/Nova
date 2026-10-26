@@ -327,8 +327,8 @@ body:not(.native) .native-only { display: none !important; }
 /* =====================================================================
    Blue HUD theme
    ===================================================================== */
-@font-face { font-family: "Orbitron"; font-weight: 500; font-display: swap; src: url("/static/fonts/orbitron-latin-500-normal.woff2") format("woff2"); }
-@font-face { font-family: "Orbitron"; font-weight: 700; font-display: swap; src: url("/static/fonts/orbitron-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Orbitron"; font-weight: 500; font-display: swap; src: url("fonts/orbitron-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Orbitron"; font-weight: 700; font-display: swap; src: url("fonts/orbitron-latin-700-normal.woff2") format("woff2"); }
 :root {
   --bg: #03070E;
   --pink: #38C8FF; --violet: #2F7BFF; --blue: #1AA3FF; --cyan: #7DF3FF; --amber: #FFB02E;
