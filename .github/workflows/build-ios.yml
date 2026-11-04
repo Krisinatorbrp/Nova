@@ -6,7 +6,7 @@ on:
     branches: [windock-ios]
 
 permissions:
-  contents: read
+  contents: write # publishes the IPA to the windock-ios-ipa branch
 
 concurrency:
   group: ios-${{ github.ref }}
@@ -82,6 +82,30 @@ jobs:
             CODE_SIGNING_ALLOWED=NO | tee ios/build/device-build.log
           ditto -c -k --keepParent ios/build/WinDock-unsigned.xcarchive ios/build/WinDock-unsigned-archive.zip
           ditto -c -k --keepParent ios/build/DerivedData/Build/Products/Debug-iphonesimulator/WinDock.app ios/build/WinDock-simulator.zip
+      - name: Package unsigned IPA
+        run: |
+          set -euo pipefail
+          APP=ios/build/WinDock-unsigned.xcarchive/Products/Applications/WinDock.app
+          lipo -info "$APP/WinDock"
+          rm -rf ios/build/ipa && mkdir -p ios/build/ipa/Payload
+          ditto "$APP" ios/build/ipa/Payload/WinDock.app
+          (cd ios/build/ipa && zip -qry ../WinDock-unsigned.ipa Payload)
+          unzip -l ios/build/WinDock-unsigned.ipa | tail -1
+          shasum -a 256 ios/build/WinDock-unsigned.ipa | tee ios/build/WinDock-unsigned.ipa.sha256
+      - name: Publish IPA to windock-ios-ipa branch
+        if: github.event_name != 'pull_request'
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          OUT="$RUNNER_TEMP/ipa-branch"
+          rm -rf "$OUT" && mkdir -p "$OUT" && cd "$OUT"
+          git init -q -b windock-ios-ipa
+          cp "$GITHUB_WORKSPACE/ios/build/WinDock-unsigned.ipa" "$GITHUB_WORKSPACE/ios/build/WinDock-unsigned.ipa.sha256" .
+          printf '# WinDock unsigned IPA\n\nBuilt from %s (run %s). Unsigned: re-sign with your Apple ID (for example Sideloadly) before installing.\n' "$GITHUB_SHA" "$GITHUB_RUN_NUMBER" > README.md
+          git add .
+          git -c user.name=github-actions -c user.email=41898282+github-actions[bot]@users.noreply.github.com commit -qm "WinDock unsigned IPA from ${GITHUB_SHA::7} (run $GITHUB_RUN_NUMBER)"
+          git push -qf "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" windock-ios-ipa
       - name: Collect screenshots and stop fixture
         if: always()
         run: |
@@ -97,6 +121,7 @@ jobs:
           retention-days: 14
           path: |
             ios/build/WinDock-unsigned-archive.zip
+            ios/build/WinDock-unsigned.ipa
             ios/build/WinDock-simulator.zip
             ios/build/Tests.xcresult
             ios/build/screenshots
