@@ -58,10 +58,12 @@ jobs:
           set -euo pipefail
           OUT="$RUNNER_TEMP/win-branch"
           rm -rf "$OUT" && mkdir -p "$OUT"
-          cp artifacts/installer/WinDockSetup.exe "$OUT/"
+          sha256sum artifacts/installer/WinDockSetup.exe | sed 's#artifacts/installer/##' > "$OUT/WinDockSetup.exe.sha256"
+          # Git hosting rejects files over 100 MB, so the installer is stored in parts.
+          split -b 45m -d -a 2 artifacts/installer/WinDockSetup.exe "$OUT/WinDockSetup.exe.part"
           cd "$OUT"
-          sha256sum WinDockSetup.exe > WinDockSetup.exe.sha256
-          printf '# WinDock Windows installer (Stream Deck build)\n\nBuilt from %s (run %s). Unsigned: Windows SmartScreen will ask before running it.\n' "$GITHUB_SHA" "$GITHUB_RUN_NUMBER" > README.md
+          ls -l
+          printf '# WinDock Windows installer (Stream Deck build)\n\nBuilt from %s (run %s). Unsigned: Windows SmartScreen will ask before running it. Join the parts first: copy /b WinDockSetup.exe.part00+WinDockSetup.exe.part01+WinDockSetup.exe.part02 WinDockSetup.exe\n' "$GITHUB_SHA" "$GITHUB_RUN_NUMBER" > README.md
           git init -q -b windock-windows-installer
           git add .
           git -c user.name=github-actions -c user.email=41898282+github-actions[bot]@users.noreply.github.com commit -qm "WinDock installer from ${GITHUB_SHA::7} (run $GITHUB_RUN_NUMBER)"
