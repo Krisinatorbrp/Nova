@@ -1,6 +1,8 @@
-import { renderNowPlaying, renderControlPicker, renderAppIcon, renderControls, escapeHtml } from "./dock.js";
+import { renderNowPlaying, renderControlPicker, renderAppIcon, renderControls, renderDeckFace, escapeHtml } from "./dock.js";
 import { icon, controlIcon } from "./icons.js";
-import { addAppTile, addControlTile, removeTile, moveTile, toWireTiles, availableControls, tileKey } from "./tiles.js";
+import { addAppTile, addControlTile, removeTile, moveTile, toWireTiles, availableControls, tileKey, upsertDeckTile } from "./tiles.js";
+import { createDeckEditor, renderDeckPicker } from "./deck-editor.js";
+import { DECK_KINDS } from "./deck-model.js";
 import { normalizeLayout, renderPages, pageCount, moveToTile } from "./launcher.js";
 import { createInputPad } from "./input-pad.js";
 import { pairingError } from "./pairing.js";
@@ -144,7 +146,7 @@ function syncLayout() {
   root.setProperty("--columns", layout.columns);
   root.setProperty("--rows", layout.rows);
   root.setProperty("--icon-size", (layout.immersive ? layout.iconSize : 72) + "px");
-  root.setProperty("--icon-scale", { 4: .44, 6: .38, 8: .32 }[layout.perPage]);
+  root.setProperty("--icon-scale", { 4: .44, 6: .38, 8: .32, 15: .25 }[layout.perPage]);
   document.documentElement.dataset.background = layout.background;
   document.documentElement.dataset.theme = layout.theme;
   document.body.classList.toggle("is-immersive", layout.immersive);
@@ -156,7 +158,7 @@ function syncLayout() {
   $("show-labels").disabled = !layout.immersive;
   $("glass-theme").value = layout.theme;
   syncPerformance();
-  $("layout-summary").textContent = layout.perPage + " icons · " + layout.columns + " × 2";
+  $("layout-summary").textContent = (layout.perPage === 15 ? "Stream Deck · " : layout.perPage + " icons · ") + layout.columns + " × " + layout.rows;
   document.querySelectorAll("[data-per-page]").forEach((button) => button.setAttribute("aria-pressed", String(Number(button.dataset.perPage) === layout.perPage)));
   document.querySelectorAll("[data-background]").forEach((button) => { if (button.tagName === "BUTTON") button.setAttribute("aria-pressed", String(button.dataset.background === layout.background)); });
 }
@@ -264,11 +266,16 @@ function confirmPower(verb) {
     dialog.showModal();
   });
 }
+/** A short tap feel: native haptics on iPhone, vibration on Android. */
+function haptic() {
+  try { if (typeof window.WinDockAndroid?.haptic === "function") window.WinDockAndroid.haptic(); else navigator.vibrate?.(12); } catch { /* optional */ }
+}
 async function activate(button) {
   if (editing && button.dataset.tileKey) return openTileOptions(button.dataset.tileKey);
   if (!online) return notify("Your PC is disconnected. Wait for it to reconnect.", true);
   const { action, key } = button.dataset;
   if (action === "control" && powerActions[key] && !await confirmPower(key)) return;
+  haptic();
   button.disabled = true;
   button.setAttribute("aria-busy", "true");
   try {
@@ -277,6 +284,10 @@ async function activate(button) {
       await api("/api/control", { method: "POST", body: JSON.stringify(raw === undefined ? { verb: key } : { verb: key, value: Number(raw) }) });
       if (key.startsWith("media-")) nowPlaying.refresh().catch(() => {});
       notify(powerActions[key] ? "Command sent to your PC" : "Control sent");
+    } else if (action === "deck") {
+      const tile = state.tiles.find((item) => DECK_KINDS.includes(item.kind) && item.id === key);
+      await api("/api/deck/run", { method: "POST", body: JSON.stringify({ id: key }) });
+      notify((tile?.label || "Button") + " ✓");
     } else if (action === "launch") {
       const running = state.running.find((item) => item.id === key);
       const title = state.tiles.find((item) => item.id === key)?.label || "App";
@@ -292,7 +303,9 @@ function openTileOptions(key) {
   const tile = state.tiles[index];
   if (!tile) return;
   $("tile-options-title").textContent = tile.label;
-  $("tile-options-icon").innerHTML = tile.kind === "app" ? renderAppIcon(tile) : controlIcon(tile.verb);
+  const deck = DECK_KINDS.includes(tile.kind);
+  $("tile-options-icon").innerHTML = tile.kind === "app" ? renderAppIcon(tile) : deck ? renderDeckFace(tile) : controlIcon(tile.verb);
+  $("tile-edit").hidden = !deck;
   $("tile-earlier").disabled = index === 0;
   $("tile-later").disabled = index === state.tiles.length - 1;
   $("tile-options").showModal();
@@ -309,18 +322,46 @@ function drawControls() {
   $("control-list").innerHTML = renderControlPicker(groups);
   $("picker-status").textContent = "Pin the controls you reach for most";
 }
+const PICKER_TABS = ["apps", "controls", "deck"];
 function selectTab(which) {
   const apps = which === "apps";
-  for (const [id, active] of [["tab-apps", apps], ["tab-controls", !apps]]) {
-    $(id).classList.toggle("is-active", active);
-    $(id).setAttribute("aria-selected", String(active));
-    $(id).tabIndex = active ? 0 : -1;
+  for (const tab of PICKER_TABS) {
+    const active = tab === which;
+    $("tab-" + tab).classList.toggle("is-active", active);
+    $("tab-" + tab).setAttribute("aria-selected", String(active));
+    $("tab-" + tab).tabIndex = active ? 0 : -1;
   }
   $("picker-list").hidden = !apps;
-  $("control-list").hidden = apps;
+  $("control-list").hidden = which !== "controls";
+  $("deck-list").hidden = which !== "deck";
   $("picker-search").hidden = !apps;
-  if (apps && appsLoaded) drawApps(); else if (!apps) drawControls();
+  if (apps && appsLoaded) drawApps();
+  else if (which === "controls") drawControls();
+  else if (which === "deck") drawDeck();
 }
+function drawDeck() {
+  $("deck-list").innerHTML = renderDeckPicker(state.deck || {});
+  $("picker-status").textContent = "Stream Deck buttons: shortcuts, websites and multi-actions";
+}
+async function loadInstalledApps() {
+  if (!appsLoaded) { const { apps } = await api("/api/apps/installed"); installedApps = apps; appsLoaded = true; }
+  return installedApps;
+}
+const deckEditor = createDeckEditor({
+  $,
+  getState: () => state,
+  loadApps: loadInstalledApps,
+  async save(tile) {
+    const exists = state.tiles.some((item) => tileKey(item) === tileKey(tile));
+    if (!exists && state.tiles.length >= 64) throw new Error("Your dock is full. Remove a tile before adding another.");
+    await commitTiles(upsertDeckTile(state.tiles, tile));
+    notify((tile.label || "Button") + (exists ? " updated" : " added to your dock"));
+  },
+  async remove(tile) {
+    await commitTiles(removeTile(state.tiles, tileKey(tile)));
+    notify("Removed from your dock");
+  },
+});
 async function openPicker() {
   selectTab("apps");
   if (!$("picker").open) $("picker").showModal();
@@ -485,11 +526,25 @@ $("add").addEventListener("click", openPicker);
 $("picker-close").addEventListener("click", () => $("picker").close());
 $("tab-apps").addEventListener("click", () => selectTab("apps"));
 $("tab-controls").addEventListener("click", () => selectTab("controls"));
+$("tab-deck").addEventListener("click", () => selectTab("deck"));
+$("deck-list").addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-deck-new]");
+  if (!button || button.disabled) return;
+  $("picker").close();
+  deckEditor.open(button.dataset.deckNew).catch(report);
+});
+$("tile-edit").addEventListener("click", () => {
+  const tile = state.tiles.find((item) => tileKey(item) === selectedKey);
+  $("tile-options").close();
+  if (tile && DECK_KINDS.includes(tile.kind)) deckEditor.open(tile).catch(report);
+});
 document.querySelector(".picker__tabs").addEventListener("keydown", (event) => {
   if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
   event.preventDefault();
-  const apps = event.key === "Home" || event.key !== "End" && $("tab-apps").getAttribute("aria-selected") !== "true";
-  selectTab(apps ? "apps" : "controls"); $(apps ? "tab-apps" : "tab-controls").focus();
+  const current = PICKER_TABS.findIndex((tab) => $("tab-" + tab).getAttribute("aria-selected") === "true");
+  const next = event.key === "Home" ? 0 : event.key === "End" ? PICKER_TABS.length - 1
+    : (current + (event.key === "ArrowRight" ? 1 : -1) + PICKER_TABS.length) % PICKER_TABS.length;
+  selectTab(PICKER_TABS[next]); $("tab-" + PICKER_TABS[next]).focus();
 });
 $("filter").addEventListener("input", drawApps);
 $("settings-open").addEventListener("click", openSettings);

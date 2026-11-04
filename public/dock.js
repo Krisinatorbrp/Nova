@@ -7,6 +7,7 @@
  */
 
 import { icon, controlIcon } from "./icons.js";
+import { DECK_KINDS, DECK_COLORS, DEFAULT_GLYPH, deckHint } from "./deck-model.js";
 
 /** Minimal HTML-escape for text interpolated into the dock. */
 export function escapeHtml(value) {
@@ -36,6 +37,7 @@ const CONTROL_GLYPH = {
 
 export function glyphFor(tile) {
   if (tile.kind === "control") return CONTROL_GLYPH[tile.verb] || "•";
+  if (DECK_KINDS.includes(tile.kind)) return tile.glyph || DEFAULT_GLYPH[tile.kind];
   const name = String(tile.label || tile.id || "?").trim();
   return name.slice(0, 1).toUpperCase() || "?";
 }
@@ -43,6 +45,12 @@ export function glyphFor(tile) {
 export function renderAppIcon(app, lazy = false) {
   const initial = glyphFor({ ...app, label: app.name || app.label });
   return `<span class="app-icon"><span class="app-icon__fallback">${escapeHtml(initial)}</span><img src="/api/apps/icon?v=3&amp;id=${escapeHtml(encodeURIComponent(app.id))}" alt="" width="48" height="48" decoding="async"${lazy ? ' loading="lazy"' : ""}></span>`;
+}
+
+/** A Stream Deck key face: color, emoji or symbol. */
+export function renderDeckFace(tile) {
+  const color = DECK_COLORS.includes(tile.color) ? tile.color : "slate";
+  return `<span class="deck-key deck-key--${color}"><span class="deck-key__glyph">${escapeHtml(glyphFor(tile))}</span></span>`;
 }
 
 /**
@@ -56,21 +64,23 @@ export function renderTile(tile, { editing = false, first = false, last = false,
   const classes = ["tile", `tile--${tile.kind}`];
   if (running) classes.push("is-running");
   if (editing) classes.push("is-editing");
-  const action = tile.kind === "control" ? "control" : "launch";
+  const deck = DECK_KINDS.includes(tile.kind);
+  if (deck) classes.push("tile--deck");
+  const action = tile.kind === "control" ? "control" : deck ? "deck" : "launch";
   const hasValue = tile.kind === "control" && tile.value !== undefined && tile.value !== null;
   const key =
     tile.kind === "control"
       ? `control:${tile.verb}${hasValue ? `:${tile.value}` : ""}`
-      : `app:${tile.id}`;
+      : deck ? `deck:${tile.id}` : `app:${tile.id}`;
   const actionKey = tile.kind === "control" ? tile.verb : tile.id;
   // A valued verb carries its value on the element; tapping a tile with no
   // value would send an incomplete request the host correctly rejects.
   const valueAttr = hasValue ? ` data-value="${escapeHtml(String(tile.value))}"` : "";
 
   const body = [
-    `<span class="tile__glyph" aria-hidden="true">${tile.kind === "app" ? renderAppIcon(tile) : controlIcon(tile.verb)}</span>`,
+    `<span class="tile__glyph" aria-hidden="true">${tile.kind === "app" ? renderAppIcon(tile) : deck ? renderDeckFace(tile) : controlIcon(tile.verb)}</span>`,
     `<span class="tile__label">${escapeHtml(tile.label)}</span>`,
-    !editing ? `<span class="tile__hint">${tile.kind === "app" ? running ? "Running" : "Open app" : "Quick action"}</span>` : "",
+    !editing ? `<span class="tile__hint">${tile.kind === "app" ? running ? "Running" : "Open app" : deck ? escapeHtml(deckHint(tile)) : "Quick action"}</span>` : "",
     running && !editing ? '<span class="tile__dot" aria-hidden="true"></span>' : "",
   ].join("");
 

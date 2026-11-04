@@ -137,10 +137,12 @@
   <div class="picker__tools"><div class="picker__tabs" role="tablist" aria-label="Tile type">
     <button id="tab-apps" class="picker__tab is-active" type="button" role="tab" aria-selected="true" aria-controls="picker-list">Apps</button>
     <button id="tab-controls" class="picker__tab" type="button" role="tab" aria-selected="false" aria-controls="control-list" tabindex="-1">Controls</button>
+    <button id="tab-deck" class="picker__tab" type="button" role="tab" aria-selected="false" aria-controls="deck-list" tabindex="-1">Stream Deck</button>
   </div><label id="picker-search" class="search-box"><span data-icon="search"></span><input id="filter" placeholder="Find an app…" aria-label="Search apps" autocomplete="off"></label></div>
   <p id="picker-status" class="picker__status" role="status">Loading your apps…</p>
   <ul id="picker-list" class="picker__list" role="tabpanel" aria-labelledby="tab-apps"></ul>
   <ul id="control-list" class="picker__list" role="tabpanel" aria-labelledby="tab-controls" hidden></ul>
+  <ul id="deck-list" class="picker__list deck-picker" role="tabpanel" aria-labelledby="tab-deck" hidden></ul>
 </dialog>
 
 <dialog id="settings" class="sheet settings" aria-labelledby="settings-title">
@@ -152,6 +154,7 @@
         <button type="button" data-per-page="4" aria-pressed="true"><span class="mini-grid" style="--mini-columns:2"><i></i><i></i><i></i><i></i></span><span>4 icons</span></button>
         <button type="button" data-per-page="6" aria-pressed="false"><span class="mini-grid" style="--mini-columns:3"><i></i><i></i><i></i><i></i><i></i><i></i></span><span>6 icons</span></button>
         <button type="button" data-per-page="8" aria-pressed="false"><span class="mini-grid" style="--mini-columns:4"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span>8 icons</span></button>
+        <button type="button" data-per-page="15" aria-pressed="false"><span class="mini-grid" style="--mini-columns:5"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span>Stream Deck</span></button>
       </div>
       <label class="setting-row">Immersive mode<input id="immersive" class="switch" type="checkbox" role="switch" checked></label>
       <label class="setting-row">App names<input id="show-labels" class="switch" type="checkbox" role="switch"></label>
@@ -195,10 +198,27 @@
 
 <dialog id="tile-options" class="options" aria-labelledby="tile-options-title">
   <span id="tile-options-icon" class="options__icon"></span><h2 id="tile-options-title">App options</h2><p>Make a little room. Keep it in reach.</p>
-  <div class="options__actions"><button id="tile-earlier" type="button"><span data-icon="left"></span>Move earlier</button><button id="tile-later" type="button"><span data-icon="right"></span>Move later</button><button id="tile-remove" class="danger-text" type="button"><span data-icon="trash"></span>Remove from dock</button></div>
+  <div class="options__actions"><button id="tile-earlier" type="button"><span data-icon="left"></span>Move earlier</button><button id="tile-later" type="button"><span data-icon="right"></span>Move later</button><button id="tile-edit" type="button" hidden><span data-icon="edit"></span>Edit button</button><button id="tile-remove" class="danger-text" type="button"><span data-icon="trash"></span>Remove from dock</button></div>
   <button class="button options__done" type="button" data-close="tile-options">Done</button>
 </dialog>
 
+<dialog id="deck-editor" class="sheet deck-editor" aria-labelledby="deck-editor-title">
+  <form id="deck-form" method="dialog" novalidate>
+    <div class="sheet__heading"><div><p class="eyebrow">STREAM DECK</p><h2 id="deck-editor-title">New button</h2></div><button class="icon-button" type="button" data-close="deck-editor" aria-label="Close button editor"><span data-icon="close"></span></button></div>
+    <div class="deck-editor__body">
+      <div class="deck-editor__side"><div id="deck-preview" class="deck-editor__preview" aria-hidden="true"></div><div id="deck-colors" class="deck-colors" role="radiogroup" aria-label="Button color"></div></div>
+      <div class="deck-editor__fields">
+        <div class="deck-row"><label class="deck-field">Name<input id="deck-label" maxlength="40" autocomplete="off" placeholder="Mute mic"></label><label class="deck-field deck-field--glyph">Symbol<input id="deck-glyph" maxlength="16" autocomplete="off" placeholder="🎙️"></label></div>
+        <section id="deck-hotkey" class="deck-section"><p class="deck-section__title">Keyboard shortcut</p><div id="deck-mods" class="deck-mods"></div><label class="deck-field">Key<select id="deck-key"></select></label><p class="settings__tip">Sent to the window that is in front on your PC. F13–F24 are great for OBS and Discord because no other app uses them.</p></section>
+        <section id="deck-url" class="deck-section"><label class="deck-field">Website address<input id="deck-url-input" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="youtube.com"></label><p class="settings__tip">Opens in your PC’s default browser.</p></section>
+        <section id="deck-steps" class="deck-section"><p class="deck-section__title">Steps, in order</p><ol id="deck-step-list" class="deck-steps"></ol>
+          <div class="deck-add-step"><select id="deck-step-type" aria-label="Step type"><option value="hotkey">Press a shortcut</option><option value="url">Open a website</option><option value="app">Open an app</option><option value="control">Volume or media control</option><option value="delay">Wait</option></select><div id="deck-step-config" class="deck-step-config"></div><button id="deck-step-add" class="button" type="button"><span data-icon="plus"></span>Add step</button></div></section>
+        <p id="deck-error" class="deck-editor__error" role="alert"></p>
+      </div>
+    </div>
+    <div class="deck-editor__actions"><button id="deck-delete" class="button danger-text" type="button" hidden>Delete</button><button id="deck-save" class="button button--primary" type="submit">Save button</button></div>
+  </form>
+</dialog>
 <dialog id="confirm" class="confirm" aria-labelledby="confirm-title" aria-describedby="confirm-description">
   <span class="confirm__icon" data-icon="power"></span><h2 id="confirm-title">Continue?</h2><p id="confirm-description"></p>
   <div class="confirm__actions"><button id="confirm-cancel" class="button" type="button" autofocus>Cancel</button><button id="confirm-go" class="button button--danger" type="button">Continue</button></div>

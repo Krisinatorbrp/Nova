@@ -18,6 +18,7 @@
  * any OS, which is what the inventory and launch gates exercise.
  */
 
+import { normalizeHotkey, normalizeUrl } from "../deck.js";
 import { CONTROL_VERBS, validateControl } from "./contract.js";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
@@ -337,6 +338,24 @@ export function createWindowsProvider({ exec, helperPath = process.env.WINDOCK_H
         }
       } else await helper(args);
       return { ok: true, verb };
+    },
+
+    /** Stream Deck shortcut, sent to the PC's foreground window. */
+    async sendHotkey(keys) {
+      const combo = normalizeHotkey(keys);
+      if (!combo) throw Object.assign(new Error("That keyboard shortcut is not supported."), { status: 400 });
+      try { await helper(["hotkey", combo]); }
+      catch (cause) {
+        throw Object.assign(new Error("Windows did not accept the shortcut. Apps running as administrator only accept shortcuts when WinDock runs as administrator too.", { cause }), { status: 503 });
+      }
+    },
+
+    /** Open a validated http(s) address in the default browser. */
+    async openUrl(url) {
+      const href = normalizeUrl(url);
+      if (!href) throw Object.assign(new Error("Only http and https addresses can be opened."), { status: 400 });
+      try { await helper(["open-url", href]); }
+      catch (cause) { throw Object.assign(new Error("Windows could not open that address.", { cause }), { status: 503 }); }
     },
 
     async nowPlaying() {

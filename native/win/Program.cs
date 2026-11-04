@@ -10,6 +10,8 @@
 //   close  <pid>                 ask the main window to close
 //   control <verb> [value]       volume / media / brightness / power
 //   nowplaying                   print the current media session as JSON
+//   hotkey <combo>               press a Stream Deck shortcut, e.g. ctrl+shift+m
+//   open-url <url>               open an http(s) address in the default browser
 //
 // Exit codes: 0 success, 1 usage error, 2 runtime failure.
 
@@ -40,6 +42,8 @@ internal static class Program
                 "focus" => Focus(args),
                 "close" => Close(args),
                 "control" => Control(args),
+                "hotkey" => Deck.Hotkey(args),
+                "open-url" => Deck.OpenUrl(args),
                 "nowplaying" => NowPlaying(),
                 "volume" => ReadVolume(),
                 "brightness" => ReadBrightness(args),

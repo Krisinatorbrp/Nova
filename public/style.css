@@ -487,3 +487,70 @@ html.perf .touchpad-feedback > span::before, html.perf .touchpad-feedback > span
 .updates-content .settings__utilities { flex-wrap: wrap; }
 .updates-content a { text-decoration: none; }
 @media (max-width: 650px) { .drawer-actions { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* ---- Stream Deck buttons ------------------------------------------------ */
+.deck-key { position: relative; display: grid; place-items: center; width: 100%; height: 100%; border-radius: 22%; background: linear-gradient(150deg, var(--deck-a), var(--deck-b)); border: 1px solid #ffffff26; box-shadow: inset 0 1px 0 #ffffff33, inset 0 -6px 12px #0003, 0 8px 18px #0004; overflow: hidden; }
+.deck-key::after { content: ""; position: absolute; inset: 0 0 55% 0; background: linear-gradient(#ffffff1f, transparent); pointer-events: none; }
+.deck-key__glyph { font-size: calc(var(--display-icon, var(--icon-size)) * .46); line-height: 1; filter: drop-shadow(0 2px 3px #0005); }
+.deck-key--slate { --deck-a: #4b5a63; --deck-b: #232c31; }
+.deck-key--red { --deck-a: #e5534b; --deck-b: #8f1f1a; }
+.deck-key--orange { --deck-a: #f0883e; --deck-b: #9a4210; }
+.deck-key--yellow { --deck-a: #e3b341; --deck-b: #8a6100; }
+.deck-key--green { --deck-a: #46c46b; --deck-b: #156b31; }
+.deck-key--teal { --deck-a: #39c5bb; --deck-b: #0f6b66; }
+.deck-key--blue { --deck-a: #4f8ef7; --deck-b: #1a3f99; }
+.deck-key--purple { --deck-a: #a371f7; --deck-b: #52299e; }
+.deck-key--pink { --deck-a: #ec6cb9; --deck-b: #8c1f62; }
+.tile--deck:active .deck-key, .tile--deck[aria-busy="true"] .deck-key { transform: scale(.94); filter: brightness(1.25); transition: transform .06s, filter .06s; }
+.tile--deck .tile__glyph { container-type: size; }
+.tile--deck .deck-key__glyph { font-size: 46cqh; }
+.options__icon .deck-key__glyph { font-size: 26px; }
+.deck-picker__glyph { font-size: 22px; display: grid; place-items: center; }
+
+.deck-editor { width: min(94vw, 860px); }
+.deck-editor form { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; }
+.deck-editor__body { display: grid; grid-template-columns: 150px 1fr; gap: 18px; flex: 1; min-height: 0; overflow: auto; padding: 0 25px 4px; }
+.deck-editor__side { display: grid; align-content: start; gap: 12px; justify-items: center; }
+.deck-editor__preview { display: grid; justify-items: center; gap: 6px; width: 104px; }
+.deck-editor__preview .deck-key { width: 96px; height: 96px; }
+.deck-editor__preview .deck-key__glyph { font-size: 44px; }
+.deck-editor__preview-label { font-size: 12px; color: var(--muted); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.deck-colors { display: grid; grid-template-columns: repeat(3, 32px); gap: 8px; }
+.deck-swatch { width: 32px; height: 32px; padding: 0; border-radius: 10px; border: 1px solid #ffffff30; background: linear-gradient(150deg, var(--deck-a), var(--deck-b)) !important; }
+.deck-swatch[aria-checked="true"] { outline: 2px solid var(--accent); outline-offset: 2px; }
+.deck-editor__fields { display: grid; align-content: start; gap: 12px; min-width: 0; }
+.deck-row { display: grid; grid-template-columns: 1fr 110px; gap: 10px; }
+.deck-field { display: grid; gap: 5px; font-size: 11px; color: var(--muted); }
+.deck-field input, .deck-field select, .deck-add-step select, .deck-step-config input, .deck-step-config select { width: 100%; min-height: 40px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--text); font: inherit; font-size: 14px; }
+.deck-section { display: grid; gap: 9px; padding: 12px; border: 1px solid #ffffff0d; border-radius: 14px; background: #ffffff05; }
+.deck-section[hidden] { display: none; }
+.deck-section__title { margin: 0; font-size: 12px; font-weight: 600; }
+.deck-mods { display: flex; flex-wrap: wrap; gap: 6px; }
+.deck-mod { min-width: 58px; min-height: 36px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--muted); font-size: 12px; }
+.deck-mod[aria-pressed="true"] { background: #b4edcc1f; border-color: #b4edcc66; color: var(--accent); }
+.deck-steps { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.deck-steps li { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 4px 6px 4px 10px; border-radius: 10px; background: var(--surface); font-size: 13px; }
+.deck-steps__n { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--surface-2); color: var(--accent); font-size: 11px; flex-shrink: 0; }
+.deck-steps__text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.deck-steps .icon-button { width: 32px; height: 32px; }
+.deck-steps__empty { color: var(--muted); justify-content: center; }
+.deck-add-step { display: grid; grid-template-columns: minmax(0, 190px) 1fr auto; gap: 8px; align-items: start; }
+.deck-step-config { display: grid; gap: 6px; min-width: 0; }
+.deck-inline { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.deck-inline input { max-width: 110px; }
+.deck-editor__note { margin: 0; font-size: 11px; color: var(--muted); }
+.deck-editor__error { margin: 0; min-height: 1em; color: #ffb4a8; font-size: 12px; }
+.deck-editor__actions { display: flex; justify-content: flex-end; gap: 8px; padding: 0 25px 16px; flex-shrink: 0; }
+.deck-editor__actions .danger-text { margin-right: auto; }
+@media (max-height: 500px) {
+  .deck-editor__body { grid-template-columns: 1fr; gap: 10px; padding: 0 22px 4px; }
+  .deck-editor__side { grid-auto-flow: column; justify-content: start; align-items: center; gap: 14px; }
+  .deck-editor__preview { width: auto; grid-auto-flow: column; align-items: center; gap: 10px; }
+  .deck-editor__preview .deck-key { width: 52px; height: 52px; }
+  .deck-editor__preview .deck-key__glyph { font-size: 26px; }
+  .deck-colors { grid-template-columns: repeat(9, 26px); gap: 6px; }
+  .deck-swatch { width: 26px; height: 26px; border-radius: 8px; }
+  .deck-add-step { grid-template-columns: minmax(0, 200px) 1fr auto; }
+  .deck-editor__actions { padding: 0 22px 10px; }
+  .deck-editor__actions .button { min-height: 38px; padding: 7px 16px; }
+}

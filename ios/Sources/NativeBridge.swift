@@ -12,6 +12,7 @@ protocol NativeBridgeDelegate: AnyObject {
     func bridgeShowPCPicker()
     func bridgeShowPhoneSettings()
     func bridgeOpenPCRelease(version: String)
+    func bridgeHaptic()
 }
 
 /// The shared dock (`public/*.js` on the PC) feature-detects `window.WinDockAndroid`.
@@ -45,6 +46,7 @@ final class NativeBridge: NSObject, WKScriptMessageHandler {
         showPcPicker: () => post("showPcPicker", []),
         showPhoneSettings: () => post("showPhoneSettings", []),
         openPcRelease: (version) => post("openPcRelease", [String(version)]),
+        haptic: () => post("haptic", []),
       });
       Object.defineProperty(window, "WinDockAndroid", { value: api, enumerable: false, configurable: false, writable: false });
       Object.defineProperty(window, "WinDockIOS", { value: true, enumerable: false, configurable: false, writable: false });
@@ -110,6 +112,7 @@ final class NativeBridge: NSObject, WKScriptMessageHandler {
         case "hideKeyboard": delegate.bridgeHideKeyboard()
         case "showPcPicker": delegate.bridgeShowPCPicker()
         case "showPhoneSettings": delegate.bridgeShowPhoneSettings()
+        case "haptic": delegate.bridgeHaptic()
         case "openPcRelease":
             if let version = call.string(0) { delegate.bridgeOpenPCRelease(version: version) }
         default: break

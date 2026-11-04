@@ -526,6 +526,15 @@ final class DockViewController: UIViewController, WKNavigationDelegate, WKUIDele
         UIApplication.shared.open(url)
     }
 
+    private let tapFeedback = UIImpactFeedbackGenerator(style: .medium)
+
+    /// Stream Deck key press feel.
+    func bridgeHaptic() {
+        guard trustedPage else { return }
+        tapFeedback.impactOccurred()
+        tapFeedback.prepare()
+    }
+
     // MARK: - WKUIDelegate
 
     func webView(_ webView: WKWebView, runJavaScriptTextInputPanelWithPrompt prompt: String, defaultText: String?,

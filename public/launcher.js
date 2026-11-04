@@ -2,15 +2,17 @@ import { renderTile, renderTiles } from "./dock.js";
 import { tileKey, moveTile } from "./tiles.js";
 
 export function normalizeLayout(value = {}) {
-  // Upgrade earlier row/column preferences to one of the three supported grids.
+  // Upgrade earlier row/column preferences to one of the supported grids.
+  // 15 is the Stream Deck grid: five keys across, three rows.
   const oldCapacity = Number(value?.columns) * Number(value?.rows);
-  const perPage = [4, 6, 8].includes(Number(value?.perPage)) ? Number(value.perPage)
+  const perPage = [4, 6, 8, 15].includes(Number(value?.perPage)) ? Number(value.perPage)
     : value?.perPage === undefined && [4, 6, 8].includes(oldCapacity) ? oldCapacity : 4;
+  const rows = perPage === 15 ? 3 : 2;
   return {
     perPage,
-    columns: perPage / 2,
-    rows: 2,
-    iconSize: { 4: 160, 6: 138, 8: 116 }[perPage],
+    columns: perPage / rows,
+    rows,
+    iconSize: { 4: 160, 6: 138, 8: 116, 15: 96 }[perPage],
     immersive: value?.immersive !== false,
     showLabels: value?.showLabels === true,
     background: ["aurora", "dusk", "ember", "midnight"].includes(value?.background) ? value.background : "aurora",

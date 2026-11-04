@@ -1,0 +1,68 @@
+name: Build WinDock Windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [windock-ios]
+
+permissions:
+  contents: write # publishes WinDockSetup.exe to the windock-windows-installer branch
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '8.0.x'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm test
+      - name: Verify native touchpad, signature and Stream Deck input encoding
+        run: dotnet run --project native/input-tests/WinDockInputTests.csproj -c Release
+      - name: Verify update checks and startup notification policy
+        run: dotnet run --project native/update-tests/WinDockUpdateTests.csproj -c Release
+      - name: Verify saved server port policy
+        run: dotnet run --project native/port-tests/WinDockPortTests.csproj -c Release
+      - name: Build bundled Windows app
+        shell: pwsh
+        run: ./scripts/build-windows.ps1
+      - name: Install verified installer compiler
+        shell: pwsh
+        run: ./scripts/install-inno.ps1
+      - name: Build setup program
+        shell: pwsh
+        run: ./scripts/build-installer.ps1
+      - name: Test install, launch, upgrade, and uninstall
+        shell: pwsh
+        run: ./scripts/test-installer.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: artifacts/installer/WinDockSetup.exe
+          if-no-files-found: error
+      - name: Publish installer to windock-windows-installer branch
+        shell: bash
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          OUT="$RUNNER_TEMP/win-branch"
+          rm -rf "$OUT" && mkdir -p "$OUT"
+          cp artifacts/installer/WinDockSetup.exe "$OUT/"
+          cd "$OUT"
+          sha256sum WinDockSetup.exe > WinDockSetup.exe.sha256
+          printf '# WinDock Windows installer (Stream Deck build)\n\nBuilt from %s (run %s). Unsigned: Windows SmartScreen will ask before running it.\n' "$GITHUB_SHA" "$GITHUB_RUN_NUMBER" > README.md
+          git init -q -b windock-windows-installer
+          git add .
+          git -c user.name=github-actions -c user.email=41898282+github-actions[bot]@users.noreply.github.com commit -qm "WinDock installer from ${GITHUB_SHA::7} (run $GITHUB_RUN_NUMBER)"
+          git push -qf "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" windock-windows-installer

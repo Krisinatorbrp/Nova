@@ -12,6 +12,7 @@ import { spawn as spawnProcess } from "node:child_process";
 import { readdir, readFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { validateControl } from "./contract.js";
+import { normalizeUrl } from "../deck.js";
 import { createIconLookup } from "./linux-icons.js";
 import { createLinuxCapture } from "./linux-capture.js";
 import { createLinuxInput } from "./linux-input.js";
@@ -610,6 +611,13 @@ export function createLinuxProvider({
       const [file, args] = build(checked.value, player?.name);
       await exec(file, args);
       return { ok: true, verb: checked.verb };
+    },
+
+    /** Stream Deck website button: the desktop's default browser via xdg-open. */
+    async openUrl(url) {
+      const href = normalizeUrl(url);
+      if (!href) throw failure("Only http and https addresses can be opened.", 400);
+      await exec("xdg-open", [href]);
     },
 
     async nowPlaying() {

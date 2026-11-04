@@ -22,6 +22,7 @@ archive cannot be installed on a phone by downloading it; it has to be signed fi
 | Low-RAM devices get the lighter dock (`?perf=1`) | Yes (2 GB iPhones) |
 | Open PC release page from the dock's updates dialog | Yes, opens in Safari |
 | Tailscale (100.64.0.0/10) addresses | Yes, by manual entry |
+| Stream Deck buttons (shortcuts, websites, multi-actions, 5×3 grid) | Yes, from the dock's **Add → Stream Deck** tab, with a haptic tap. Needs the matching WinDock build on the PC |
 | USB connection | Via **Personal Hotspot** over USB or Wi-Fi: the PC joins the iPhone's hotspot network and discovery finds it there. iPhones have no Android-style USB tethering mode |
 | Android APK self-update check | Not applicable. iPhone builds are installed through Xcode or TestFlight |
 

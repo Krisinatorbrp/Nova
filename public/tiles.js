@@ -9,6 +9,8 @@
  * server round-trip can be rolled back by simply keeping the old list.
  */
 
+import { DECK_KINDS, deckWireTile } from "./deck-model.js";
+
 /**
  * Stable identity for a tile within the dock.
  * A valued control is keyed by verb AND value, so "Volume 25%" and
@@ -16,6 +18,7 @@
  */
 export function tileKey(tile) {
   if (!tile || typeof tile !== "object") return "";
+  if (DECK_KINDS.includes(tile.kind)) return `deck:${tile.id}`;
   if (tile.kind !== "control") return `app:${tile.id}`;
   return tile.value === undefined || tile.value === null
     ? `control:${tile.verb}`
@@ -37,6 +40,7 @@ export function toWireTiles(tiles) {
         if (tile.value !== undefined && tile.value !== null) out.value = tile.value;
         return out;
       }
+      if (DECK_KINDS.includes(tile.kind)) return deckWireTile(tile);
       if (tile.kind === "app") {
         return {
           kind: "app",
@@ -87,6 +91,21 @@ export function addControlTile(tiles, verb, label, value = null) {
   }
   if (hasTile(list, tileKey(tile))) return list;
   return [...list, tile];
+}
+
+/**
+ * Add a Stream Deck button, or replace the one with the same id in place so an
+ * edited button keeps its position.
+ */
+export function upsertDeckTile(tiles, tile) {
+  const list = toWireTiles(tiles);
+  if (!tile || !DECK_KINDS.includes(tile.kind) || !tile.id) return list;
+  const wire = deckWireTile(tile);
+  const index = list.findIndex((t) => tileKey(t) === tileKey(wire));
+  if (index === -1) return [...list, wire];
+  const next = [...list];
+  next[index] = wire;
+  return next;
 }
 
 /** Remove the tile with this key. Removing an absent key is a no-op. */

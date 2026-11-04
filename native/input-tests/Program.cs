@@ -86,4 +86,19 @@ Check(bitmap.GetPixel(400, 120).A > 0 && bitmap.GetPixel(400, 120).B > bitmap.Ge
 Check(bitmap.GetPixel(800, 419).A > 0, "single-point strokes render");
 using var png = new MemoryStream(); bitmap.Save(png, System.Drawing.Imaging.ImageFormat.Png);
 Check(png.ToArray().Take(8).SequenceEqual(new byte[] {137, 80, 78, 71, 13, 10, 26, 10}), "export is real PNG");
+// Stream Deck shortcuts: one ordered batch, canonical combinations only.
+var combo = Deck.HotkeyInputs("ctrl+shift+m", vk => 7)!;
+Check(combo.Length == 6, "ctrl+shift+m is 3 downs and 3 ups");
+Check(combo.Select(i => i.value.keyboard.key).SequenceEqual(new ushort[] { 0xA2, 0xA0, 0x4D, 0x4D, 0xA0, 0xA2 }), "modifiers wrap the key and release in reverse");
+Check(combo.Take(3).All(i => (i.value.keyboard.flags & 2) == 0) && combo.Skip(3).All(i => (i.value.keyboard.flags & 2) == 2), "downs then ups");
+Check(combo.All(i => i.type == 1 && i.value.keyboard.scan == 7), "keyboard inputs carry scan codes");
+var arrow = Deck.HotkeyInputs("win+left", vk => 0)!;
+Check(arrow.All(i => (i.value.keyboard.flags & 1) == 1), "Win and arrows are extended keys");
+Check(Deck.HotkeyInputs("f13", vk => 0)![0].value.keyboard.key == 0x7C && Deck.HotkeyInputs("f24", vk => 0)![0].value.keyboard.key == 0x87, "F13-F24 map for OBS scenes");
+Check(Deck.HotkeyInputs("numpad5", vk => 0)![0].value.keyboard.key == 0x65 && Deck.HotkeyInputs("alt+4", vk => 0)![1].value.keyboard.key == 0x34, "numpad and digits");
+foreach (var invalid in new[] { "", "shift+ctrl+m", "ctrl+ctrl+m", "ctrl", "ctrl+", "hyper+m", "f25", "f0", "f01", "ctrl+shift+alt+win+m+x", "CTRL+M" })
+    Check(Deck.HotkeyInputs(invalid, vk => 0) is null, $"rejects shortcut '{invalid}'");
+Check(Deck.CheckedUrl("https://www.youtube.com/watch?v=1") is not null && Deck.CheckedUrl("http://192.168.1.2:8080/") is not null, "accepts http(s) addresses");
+foreach (var invalid in new[] { "file:///C:/Windows/System32/calc.exe", "javascript:alert(1)", "ms-settings:", "https://user:pw@example.com/", "https://exa mple.com", "steam://run/570", "relative/path" })
+    Check(Deck.CheckedUrl(invalid) is null, $"rejects url '{invalid}'");
 Console.WriteLine($"{checks} assertions\nNATIVE INPUT CHECKS OK (no desktop input injected)");

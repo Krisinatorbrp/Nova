@@ -13,6 +13,7 @@ import { extname, join, normalize, resolve, sep } from "node:path";
 import { createProvider } from "./src/platform/index.js";
 import { validateControl, isDestructiveVerb, CONTROL_VERBS } from "./src/platform/contract.js";
 import { createConfigStore } from "./src/config.js";
+import { DECK_KINDS, runDeckTile, deckCapabilities } from "./src/deck.js";
 import { hostIdentity } from "./src/host-identity.js";
 import { createUpdateService } from "./src/updates.js";
 import { createSyncHub } from "./src/sync.js";
@@ -150,6 +151,8 @@ export async function createApp({
     return inventoryPromise;
   }
 
+  let deckRunning = false;
+
   async function dockState() {
     const [config, running] = await Promise.all([
       configStore.load(),
@@ -166,6 +169,7 @@ export async function createApp({
       running,
       verbs: CONTROL_VERBS,
       allowDestructive,
+      deck: deckCapabilities(provider),
     };
   }
 
@@ -321,6 +325,26 @@ export async function createApp({
         else await provider.closeApp(match);
         await hub.broadcast();
         return sendJson(res, 200, { ok: true, pid });
+      }
+
+      if (path === "/api/deck/run" && req.method === "POST") {
+        const body = await readJsonBody(req);
+        const id = typeof body.id === "string" ? body.id : "";
+        const config = await configStore.load();
+        const tile = config.tiles.find((t) => DECK_KINDS.includes(t.kind) && t.id === id);
+        if (!tile) return sendJson(res, 404, { error: "This button is no longer on your dock." });
+        // One button at a time: a multi-action must not interleave with another press.
+        if (deckRunning) return sendJson(res, 409, { error: "Wait for the last button to finish." });
+        deckRunning = true;
+        try {
+          const result = await runDeckTile(tile, {
+            provider,
+            findApp: async (appId) => (await installedApps()).find((a) => a.id === appId) || null,
+            findRunning: async (appId) => (await provider.listRunningApps().catch(() => [])).find((r) => r.id === appId) || null,
+          });
+          await hub.broadcast();
+          return sendJson(res, 200, result);
+        } finally { deckRunning = false; }
       }
 
       if (path === "/api/control" && req.method === "POST") {
