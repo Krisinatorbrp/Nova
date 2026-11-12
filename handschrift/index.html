@@ -1,0 +1,1006 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Federstrich</title>
+<meta name="description" content="Eigene Handschrift anlegen, Text darin schreiben und als PDF oder PNG für GoodNotes herunterladen.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2747b8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Kalam&family=Indie+Flower&family=Homemade+Apple&family=Patrick+Hand&family=Shadows+Into+Light&family=Gochi+Hand&family=Manrope:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: app header with two steps; "Schreiben" = settings column + paper stage, "Handschrift" = character list + drawing pad */
+:root {
+  --bg: #f3f5fa;
+  --surface: #ffffff;
+  --ink: #1a2140;
+  --muted: #5d6585;
+  --line: #dde2ee;
+  --stage: #e4e8f2;
+  --accent: #2747b8;        /* Königsblau, the classic school-pen ink */
+  --accent-ink: #ffffff;
+  --accent-soft: #e5eafb;
+  --danger: #b3342b;
+  --ok: #23824f;
+  --font-body: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-hand: "Caveat", "Segoe Print", "Bradley Hand", cursive;
+  --radius: 10px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f121b; --surface: #171b27; --ink: #e5e8f3; --muted: #9aa2bf; --line: #2a3044;
+    --stage: #0b0d14; --accent: #8fa6ff; --accent-ink: #0f1430; --accent-soft: #212a4b;
+    --danger: #ff8a7f; --ok: #6fd39b; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f121b; --surface: #171b27; --ink: #e5e8f3; --muted: #9aa2bf; --line: #2a3044;
+  --stage: #0b0d14; --accent: #8fa6ff; --accent-ink: #0f1430; --accent-soft: #212a4b;
+  --danger: #ff8a7f; --ok: #6fd39b; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-bottom: max(24px, env(safe-area-inset-bottom, 0px));
+  -webkit-text-size-adjust: 100%;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.top {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px;
+  padding-top: max(14px, env(safe-area-inset-top, 0px)); padding-bottom: 14px;
+  max-width: 1280px; margin: 0 auto;
+}
+.brand { display: flex; align-items: baseline; gap: 10px; margin-right: auto; }
+.brand h1 { font: 700 34px/1 var(--font-hand); margin: 0; color: var(--accent); letter-spacing: .5px; }
+.brand span { color: var(--muted); font-size: 13px; }
+.steps { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 4px; }
+.steps button {
+  border: 0; background: transparent; padding: 8px 16px; border-radius: 999px; cursor: pointer;
+  font-weight: 600; color: var(--muted); white-space: nowrap;
+}
+.steps button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
+.steps small { font-weight: 500; opacity: .8; margin-right: 4px; }
+
+main { max-width: 1280px; margin: 0 auto; }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; min-width: 0; }
+.panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; font-weight: 700; }
+.group { display: grid; gap: 12px; padding-block: 14px; border-top: 1px solid var(--line); }
+.group:first-child { border-top: 0; padding-top: 0; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+label.field { display: grid; gap: 4px; font-size: 13px; color: var(--muted); font-weight: 600; min-width: 0; }
+label.field output { float: right; color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 500; }
+select, input[type="number"], textarea, input[type="text"] {
+  width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; color: var(--ink);
+}
+textarea { min-height: 150px; resize: vertical; font-size: 15px; line-height: 1.45; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+.check { display: flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; }
+.check input { accent-color: var(--accent); width: 18px; height: 18px; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  border-radius: 8px; padding: 9px 14px; cursor: pointer; font-weight: 600; font-size: 14px; white-space: nowrap;
+}
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.ghost { background: transparent; }
+.btn.danger { color: var(--danger); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn svg { width: 16px; height: 16px; flex: none; }
+
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.swatch {
+  width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--surface); cursor: pointer;
+  box-shadow: 0 0 0 1px var(--line); padding: 0;
+}
+.swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--accent); }
+.swatches input[type="color"] { width: 34px; height: 34px; border: 0; padding: 0; background: none; cursor: pointer; }
+
+/* ---------- Schreiben ---------- */
+.write { display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.stage-wrap { display: grid; gap: 12px; min-width: 0; }
+.notice {
+  display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  background: var(--accent-soft); border-radius: var(--radius); padding: 12px 14px; font-size: 14px;
+}
+.notice p { margin: 0; flex: 1 1 240px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.toolbar .pages { display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 14px; margin-right: auto; }
+.toolbar .pages .btn { padding: 6px 10px; }
+.stage {
+  background: var(--stage); border-radius: var(--radius); padding: 20px; display: flex; justify-content: center;
+  overflow: hidden; min-height: 300px;
+}
+.stage canvas { max-width: 100%; height: auto; box-shadow: 0 1px 2px rgba(10,20,50,.12), 0 8px 24px rgba(10,20,50,.12); background-image: linear-gradient(45deg, #ccd 25%, transparent 25%), linear-gradient(-45deg, #ccd 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccd 75%), linear-gradient(-45deg, transparent 75%, #ccd 75%); background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0; background-color: #eef; }
+.export { display: grid; gap: 10px; }
+.export .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.howto { font-size: 13px; color: var(--muted); margin: 0; }
+.howto b { color: var(--ink); }
+
+/* ---------- Handschrift ---------- */
+.hand { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 460px); gap: 16px; align-items: start; }
+.chars { display: grid; gap: 14px; }
+.progress { display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--muted); }
+.bar { flex: 1; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .3s; }
+#cgroups { display: grid; gap: 14px; }
+.cgroup h3 { font-size: 13px; margin: 0 0 6px; color: var(--muted); font-weight: 600; }
+.cgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 6px; }
+.cell {
+  position: relative; aspect-ratio: 1; border: 1px solid var(--line); border-radius: 8px; background: var(--bg);
+  cursor: pointer; padding: 0; display: grid; place-items: center; overflow: hidden;
+}
+.cell .ch { font-size: 18px; color: var(--muted); font-weight: 500; }
+.cell canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.cell.done { background: var(--surface); }
+.cell.done .ch { display: none; }
+.cell .n { position: absolute; right: 3px; bottom: 1px; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cell[aria-current="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+
+.pad-col { position: sticky; top: max(12px, env(safe-area-inset-top, 0px)); display: grid; gap: 12px; }
+.pad-head { display: flex; align-items: center; gap: 12px; }
+.pad-head .big { font: 600 34px/1 var(--font-body); min-width: 44px; text-align: center; }
+.pad-head .what { flex: 1; font-size: 13px; color: var(--muted); }
+.variants { display: flex; gap: 6px; }
+.variants button { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); cursor: pointer; font-weight: 600; font-variant-numeric: tabular-nums; }
+.variants button.has { background: var(--surface); }
+.variants button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.pad { width: 100%; aspect-ratio: 1; touch-action: none; border-radius: var(--radius); background: #fff; border: 1px solid var(--line); cursor: crosshair; display: block; -webkit-user-select: none; user-select: none; }
+.pad-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.pad-actions .grow { margin-left: auto; }
+.probe canvas { width: 100%; height: 80px; background: #fff; border-radius: 8px; border: 1px solid var(--line); display: block; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; }
+.confirm { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px; }
+.small { font-size: 13px; color: var(--muted); margin: 0; }
+
+.toast {
+  position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 20px);
+  background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: 14px; font-weight: 600;
+  opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; max-width: calc(100% - 32px); text-align: center; z-index: 20;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (max-width: 860px) {
+  .write, .hand { grid-template-columns: minmax(0, 1fr); }
+  .hand .pad-col { position: static; order: -1; }
+  .write .stage-wrap { order: -1; }
+  .stage { padding: 12px; }
+}
+@media (max-width: 480px) {
+  .steps { width: 100%; }
+  .steps button { flex: 1; padding: 8px 8px; }
+  .brand span { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><h1>Federstrich</h1><span>Deine Handschrift als Datei</span></div>
+  <nav class="steps" role="tablist" aria-label="Bereiche">
+    <button role="tab" id="tab-hand" aria-selected="false" aria-controls="view-hand"><small>1</small>Handschrift anlegen</button>
+    <button role="tab" id="tab-write" aria-selected="true" aria-controls="view-write"><small>2</small>Schreiben &amp; laden</button>
+  </nav>
+</header>
+
+<main>
+<!-- ============ SCHREIBEN ============ -->
+<section id="view-write" role="tabpanel" aria-labelledby="tab-write">
+  <div class="write">
+    <aside class="panel">
+      <div class="group">
+        <h2>Text</h2>
+        <textarea id="text" aria-label="Text, der in Handschrift erscheinen soll"></textarea>
+      </div>
+      <div class="group">
+        <h2>Schrift</h2>
+        <label class="field">Handschrift
+          <select id="style"></select>
+        </label>
+        <label class="field" id="fallback-wrap">Fehlende Zeichen schreiben mit
+          <select id="fallback"></select>
+        </label>
+        <label class="field">Größe <output id="size-o"></output>
+          <input type="range" id="size" min="2.5" max="12" step="0.1">
+        </label>
+        <div class="row">
+          <label class="field">Unruhe <output id="jitter-o"></output>
+            <input type="range" id="jitter" min="0" max="2" step="0.05">
+          </label>
+          <label class="field">Neigung <output id="slant-o"></output>
+            <input type="range" id="slant" min="-20" max="25" step="1">
+          </label>
+        </div>
+        <div class="row">
+          <label class="field">Buchstabenabstand <output id="tracking-o"></output>
+            <input type="range" id="tracking" min="-0.1" max="0.5" step="0.01">
+          </label>
+          <label class="field">Wortabstand <output id="wordgap-o"></output>
+            <input type="range" id="wordgap" min="0.3" max="1.5" step="0.05">
+          </label>
+        </div>
+        <button class="btn ghost" id="reroll" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/></svg>
+          Neu schreiben (andere Variation)
+        </button>
+      </div>
+      <div class="group">
+        <h2>Stift</h2>
+        <div class="swatches" id="inks"></div>
+        <label class="field">Strichstärke <output id="pen-o"></output>
+          <input type="range" id="pen" min="0.15" max="1.4" step="0.05">
+        </label>
+        <label class="check"><input type="checkbox" id="pressure"> Druckstärke vom Apple Pencil nutzen</label>
+      </div>
+      <div class="group">
+        <h2>Papier</h2>
+        <div class="row">
+          <label class="field">Format
+            <select id="format">
+              <option value="a4p">A4 hoch</option>
+              <option value="a4l">A4 quer</option>
+              <option value="a5p">A5 hoch</option>
+              <option value="letter">US Letter</option>
+              <option value="square">Quadrat</option>
+            </select>
+          </label>
+          <label class="field">Muster
+            <select id="paper">
+              <option value="lined">Liniert</option>
+              <option value="grid">Kariert</option>
+              <option value="dots">Punktraster</option>
+              <option value="blank">Blanko</option>
+              <option value="none">Durchsichtig</option>
+            </select>
+          </label>
+        </div>
+        <div class="row">
+          <label class="field">Zeilenabstand <output id="lh-o"></output>
+            <input type="range" id="lh" min="5" max="20" step="0.5">
+          </label>
+          <label class="field">Rand <output id="margin-o"></output>
+            <input type="range" id="margin" min="5" max="35" step="1">
+          </label>
+        </div>
+        <label class="field">Papierfarbe
+          <select id="papercolor">
+            <option value="#ffffff">Weiß</option>
+            <option value="#fbf7ec">Chamois</option>
+            <option value="#f1f3f6">Hellgrau</option>
+            <option value="#1d1f24">Dunkel</option>
+          </select>
+        </label>
+      </div>
+    </aside>
+
+    <div class="stage-wrap">
+      <div class="notice" id="own-notice">
+        <p><b>Noch keine eigene Handschrift angelegt.</b> Die Vorschau nutzt eine Beispielschrift. Schreib unter „Handschrift anlegen“ jeden Buchstaben einmal mit Finger oder Apple Pencil, dann erscheint dein Text in deiner Schrift.</p>
+        <button class="btn primary" type="button" id="go-hand">Handschrift anlegen</button>
+      </div>
+      <div class="toolbar">
+        <div class="pages">
+          <button class="btn" id="prev" type="button" aria-label="Vorherige Seite">‹</button>
+          <span id="pageinfo">Seite 1 von 1</span>
+          <button class="btn" id="next" type="button" aria-label="Nächste Seite">›</button>
+        </div>
+      </div>
+      <div class="stage"><canvas id="page" aria-label="Vorschau der Seite"></canvas></div>
+      <div class="panel export">
+        <h2>Herunterladen</h2>
+        <div class="btns">
+          <button class="btn primary" id="dl-pdf" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+            PDF (alle Seiten)</button>
+          <button class="btn" id="dl-png" type="button">PNG dieser Seite</button>
+          <button class="btn" id="dl-cut" type="button">Nur Schrift, durchsichtig (PNG)</button>
+          <button class="btn" id="share" type="button" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 13v7h14v-7"/></svg>
+            Teilen → GoodNotes</button>
+        </div>
+        <p class="howto"><b>In GoodNotes:</b> PDF öffnen → Teilen → „In GoodNotes öffnen“ (wird ein neues Notizbuch), oder in einer Notiz auf <b>+ → Importieren</b> tippen. Das durchsichtige PNG fügst du über <b>Bild einfügen</b> auf jeder beliebigen Seite ein, dann liegt nur die Schrift auf deinem Papier.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HANDSCHRIFT ============ -->
+<section id="view-hand" role="tabpanel" aria-labelledby="tab-hand" hidden>
+  <div class="hand">
+    <div class="panel chars">
+      <div class="progress"><span id="prog-t">0 von 0 Zeichen</span><div class="bar"><i id="prog-b"></i></div></div>
+      <p class="small">Tippe auf ein Zeichen und schreib es ins Feld. Bis zu drei Varianten pro Zeichen machen die Schrift natürlicher. Alles bleibt nur auf diesem Gerät gespeichert.</p>
+      <div id="cgroups"></div>
+      <div class="group">
+        <h2>Sichern &amp; übertragen</h2>
+        <div class="tools">
+          <button class="btn" id="exp-json" type="button">Handschrift sichern (.json)</button>
+          <label class="btn" for="imp-json">Sicherung laden<input type="file" id="imp-json" accept=".json,application/json" hidden></label>
+          <button class="btn" id="exp-font" type="button">Als Schriftart (.otf)</button>
+          <button class="btn danger ghost" id="wipe" type="button">Alles löschen</button>
+        </div>
+        <div class="confirm" id="wipe-confirm" hidden>
+          <span>Wirklich alle gezeichneten Zeichen löschen?</span>
+          <button class="btn danger" id="wipe-yes" type="button">Ja, löschen</button>
+          <button class="btn" id="wipe-no" type="button">Abbrechen</button>
+        </div>
+        <p class="small">Mit der Sicherung bringst du deine Schrift auf ein anderes Gerät. Die .otf-Schriftart kannst du am iPad mit einer Schriftarten-App installieren und dann im GoodNotes-Textwerkzeug nutzen.</p>
+      </div>
+    </div>
+
+    <div class="pad-col">
+      <div class="panel" style="display:grid;gap:12px">
+        <div class="pad-head">
+          <div class="big" id="cur-ch">a</div>
+          <div class="what" id="cur-what">Kleinbuchstabe</div>
+          <div class="variants" id="variants" aria-label="Varianten"></div>
+        </div>
+        <canvas class="pad" id="pad" aria-label="Schreibfeld"></canvas>
+        <div class="pad-actions">
+          <button class="btn" id="undo" type="button">Rückgängig</button>
+          <button class="btn" id="clear" type="button">Leeren</button>
+          <button class="btn primary grow" id="savenext" type="button">Weiter →</button>
+        </div>
+        <label class="check"><input type="checkbox" id="autonext"> Automatisch weiter, wenn ich kurz absetze</label>
+        <label class="check"><input type="checkbox" id="ghost" checked> Hilfsbuchstabe im Hintergrund</label>
+        <p class="small">Schreib so, dass der Buchstabe auf der <b>blauen Grundlinie</b> steht. Großbuchstaben reichen bis zur oberen Linie, kleine bis zur gestrichelten Mitte.</p>
+        <div class="probe">
+          <label class="field">Probe
+            <input type="text" id="probe-text" value="Hallo Welt">
+          </label>
+          <canvas id="probe" style="margin-top:6px"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="vendor/opentype.min.js"></script>
+<script>
+"use strict";
+/* ================= Daten & Speicher ================= */
+const STORE_HAND = "federstrich.hand.v1";
+const STORE_SET = "federstrich.settings.v1";
+const load = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } };
+const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } };
+
+const GROUPS = [
+  { name: "Kleinbuchstaben", what: "Kleinbuchstabe", chars: "abcdefghijklmnopqrstuvwxyz" },
+  { name: "Großbuchstaben", what: "Großbuchstabe", chars: "ABCDEFGHIJKLMNOPQRSTUVWXYZ" },
+  { name: "Umlaute", what: "Umlaut", chars: "äöüÄÖÜß" },
+  { name: "Ziffern", what: "Ziffer", chars: "0123456789" },
+  { name: "Satzzeichen", what: "Zeichen", chars: ".,!?:;-–()\"'/+=&@€%#*" },
+];
+const ALL = GROUPS.flatMap(g => [...g.chars]);
+const WHAT = {}; GROUPS.forEach(g => [...g.chars].forEach(c => WHAT[c] = g.what));
+
+let hand = load(STORE_HAND, { v: 1, g: {} });   // g[char] = [ {s:[[ [x,y,p], ...], ...], w}, ... ]
+if (!hand || !hand.g) hand = { v: 1, g: {} };
+const saveHand = () => { if (!save(STORE_HAND, hand)) toast("Speichern im Browser fehlgeschlagen. Sichere deine Handschrift als .json."); };
+const ownCount = () => ALL.filter(c => hand.g[c] && hand.g[c].length).length;
+const hasOwn = () => Object.keys(hand.g).some(c => hand.g[c] && hand.g[c].length);
+
+const FONTS = [
+  ["Caveat", "Caveat"], ["Kalam", "Kalam"], ["Indie Flower", "Indie Flower"], ["Patrick Hand", "Patrick Hand"],
+  ["Shadows Into Light", "Shadows Into Light"], ["Gochi Hand", "Gochi Hand"], ["Homemade Apple", "Homemade Apple (Schreibschrift)"],
+];
+const INKS = [
+  ["#1f3a9e", "Königsblau"], ["#1b1b1f", "Schwarz"], ["#5b5e66", "Bleistift"], ["#b4232c", "Rot"], ["#1d7a4a", "Grün"], ["#6b2fa3", "Lila"],
+];
+const DEFAULTS = {
+  text: "Biologie – Die Zelle\n\nDie Zelle ist die kleinste Einheit des Lebens. Jede Zelle hat eine Zellmembran, Zellplasma und (außer Bakterien) einen Zellkern.\n\nPflanzenzellen haben zusätzlich:\n- eine Zellwand\n- Chloroplasten (Fotosynthese!)\n- eine große Vakuole\n\nMerke: Mitochondrien = Kraftwerke der Zelle.",
+  style: "own", fallback: "Caveat", size: 4.6, jitter: 0.7, slant: 4, tracking: 0.08, wordgap: 0.7,
+  ink: "#1f3a9e", pen: 0.45, pressure: true, format: "a4p", paper: "lined", lh: 8.5, margin: 18, papercolor: "#ffffff", seed: 7,
+};
+const S = Object.assign({}, DEFAULTS, load(STORE_SET, {}));
+let saveSetTimer;
+const saveSettings = () => { clearTimeout(saveSetTimer); saveSetTimer = setTimeout(() => save(STORE_SET, S), 300); };
+
+const $ = id => document.getElementById(id);
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 2600);
+}
+
+/* ================= Zufall (mit Startwert, damit die Vorschau stabil bleibt) ================= */
+function rng(seed) {
+  let a = seed >>> 0;
+  return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
+const sym = r => r() * 2 - 1;
+
+/* ================= Glyphen zeichnen ================= */
+// Glyph-Koordinaten: Einheit = Versalhöhe, y = 0 Grundlinie, nach oben negativ, x ab 0.
+function strokeGlyph(ctx, glyph, unitPx, widthPx, usePressure) {
+  for (const st of glyph.s) {
+    if (st.length === 1) {
+      const [x, y, p] = st[0];
+      const w = widthPx * (usePressure ? 0.55 + 0.9 * p : 1);
+      ctx.beginPath(); ctx.arc(x * unitPx, y * unitPx, w / 2, 0, Math.PI * 2); ctx.fill();
+      continue;
+    }
+    const P = st.map(([x, y, p]) => [x * unitPx, y * unitPx, p]);
+    for (let i = 0; i < P.length - 1; i++) {
+      const a = P[i], b = P[i + 1];
+      const start = i === 0 ? a : [(P[i - 1][0] + a[0]) / 2, (P[i - 1][1] + a[1]) / 2];
+      const end = i === P.length - 2 ? b : [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+      const p = (a[2] + b[2]) / 2;
+      ctx.lineWidth = widthPx * (usePressure ? 0.55 + 0.9 * p : 1);
+      ctx.beginPath();
+      ctx.moveTo(start[0], start[1]);
+      if (i === 0) ctx.lineTo(end[0], end[1]); else ctx.quadraticCurveTo(a[0], a[1], end[0], end[1]);
+      ctx.stroke();
+    }
+  }
+}
+
+/* ================= Ersatzschriften messen ================= */
+const mctx = document.createElement("canvas").getContext("2d");
+const capCache = {};
+function capRatio(font) {
+  if (capCache[font]) return capCache[font];
+  mctx.font = `100px "${font}"`;
+  const m = mctx.measureText("H");
+  const r = (m.actualBoundingBoxAscent || 70) / 100;
+  if (document.fonts && document.fonts.check(`100px "${font}"`)) capCache[font] = r;
+  return r;
+}
+function fontWidth(font, ch, sizeMm) {
+  const em = sizeMm / capRatio(font);
+  mctx.font = `100px "${font}"`;
+  return { w: mctx.measureText(ch).width / 100 * em, em };
+}
+
+/* ================= Seitenformate ================= */
+const FORMATS = { a4p: [210, 297], a4l: [297, 210], a5p: [148, 210], letter: [215.9, 279.4], square: [210, 210] };
+
+/* ================= Satz (Layout) ================= */
+function layout() {
+  const [W, H] = FORMATS[S.format];
+  const r = rng(S.seed);
+  const size = S.size, J = S.jitter;
+  const useOwn = S.style === "own" && hasOwn();
+  const font = S.style === "own" ? S.fallback : S.style;
+  const mL = S.margin, mR = Math.max(10, S.margin * 0.7), mT = S.margin, mB = S.margin * 0.8;
+  const contentW = W - mL - mR;
+  const lineH = S.lh;
+  const firstBase = mT + lineH;
+  const perPage = Math.max(1, Math.floor((H - mB - firstBase) / lineH) + 1);
+  const gap = size * S.tracking;
+  const pen = S.pen;
+
+  function glyphItem(ch) {
+    const vars = useOwn ? hand.g[ch] : null;
+    const scale = 1 + sym(r) * 0.05 * J;
+    const it = { ch, dy: sym(r) * 0.06 * J * size, rot: sym(r) * 0.035 * J, sc: scale };
+    if (vars && vars.length) {
+      it.kind = "own"; it.g = vars[Math.floor(r() * vars.length)];
+      it.adv = it.g.w * size * scale + gap + pen * 0.6 + sym(r) * 0.04 * J * size;
+    } else {
+      it.kind = "font"; it.font = font;
+      const fw = fontWidth(font, ch, size);
+      it.em = fw.em; it.adv = fw.w * scale + gap * 0.5 + sym(r) * 0.03 * J * size;
+    }
+    it.adv = Math.max(it.adv, size * 0.12);
+    return it;
+  }
+
+  const lines = [];
+  const newLine = () => ({ items: [], slope: sym(r) * 0.004 * J, x0: sym(r) * 0.6 * J });
+  let line = newLine(), x = 0;
+  const pushLine = () => { lines.push(line); line = newLine(); x = 0; };
+  const paragraphs = String(S.text).replace(/\r/g, "").split("\n");
+  paragraphs.forEach((para) => {
+    const words = para.split(/ +/);
+    if (para.trim() === "") { pushLine(); return; }
+    words.forEach((word, wi) => {
+      if (word === "") return;
+      const items = [...word].map(glyphItem);
+      const ww = items.reduce((s, it) => s + it.adv, 0);
+      const space = size * 0.55 * S.wordgap * (1 + sym(r) * 0.2 * J);
+      if (x > 0 && x + space + ww > contentW) pushLine();
+      else if (x > 0) x += space;
+      for (const it of items) {
+        if (x + it.adv > contentW && x > 0 && ww > contentW) pushLine();
+        it.x = x; x += it.adv; line.items.push(it);
+      }
+    });
+    pushLine();
+  });
+  while (lines.length && lines[lines.length - 1].items.length === 0) lines.pop();
+  const pages = [];
+  for (let i = 0; i < Math.max(lines.length, 1); i += perPage) pages.push(lines.slice(i, i + perPage));
+  return { W, H, mL, mT, firstBase, lineH, pages };
+}
+
+/* ================= Seite zeichnen ================= */
+function drawPaper(ctx, L, k, transparent) {
+  const { W, H } = L;
+  if (transparent || S.paper === "none") return;
+  ctx.fillStyle = S.papercolor; ctx.fillRect(0, 0, W * k, H * k);
+  const dark = S.papercolor === "#1d1f24";
+  const rule = dark ? "rgba(140,160,210,.28)" : "rgba(70,110,200,.28)";
+  ctx.lineWidth = Math.max(1, 0.18 * k);
+  if (S.paper === "lined") {
+    ctx.strokeStyle = rule;
+    for (let y = L.firstBase; y < H - 4; y += L.lineH) {
+      ctx.beginPath(); ctx.moveTo(0, y * k); ctx.lineTo(W * k, y * k); ctx.stroke();
+    }
+    ctx.strokeStyle = dark ? "rgba(255,120,120,.35)" : "rgba(220,60,60,.45)";
+    ctx.beginPath(); ctx.moveTo((L.mL - 4) * k, 0); ctx.lineTo((L.mL - 4) * k, H * k); ctx.stroke();
+  } else if (S.paper === "grid") {
+    ctx.strokeStyle = dark ? "rgba(140,160,210,.2)" : "rgba(70,110,200,.2)";
+    for (let x = 5; x < W; x += 5) { ctx.beginPath(); ctx.moveTo(x * k, 0); ctx.lineTo(x * k, H * k); ctx.stroke(); }
+    for (let y = 5; y < H; y += 5) { ctx.beginPath(); ctx.moveTo(0, y * k); ctx.lineTo(W * k, y * k); ctx.stroke(); }
+  } else if (S.paper === "dots") {
+    ctx.fillStyle = dark ? "rgba(170,180,210,.45)" : "rgba(60,70,100,.38)";
+    const r = Math.max(1, 0.3 * k);
+    for (let x = 5; x < W; x += 5) for (let y = 5; y < H; y += 5) { ctx.beginPath(); ctx.arc(x * k, y * k, r, 0, Math.PI * 2); ctx.fill(); }
+  }
+}
+
+function drawPage(ctx, L, pageIdx, k, transparent) {
+  ctx.save();
+  drawPaper(ctx, L, k, transparent);
+  const lines = L.pages[pageIdx] || [];
+  const slant = Math.tan(S.slant * Math.PI / 180);
+  ctx.fillStyle = S.ink; ctx.strokeStyle = S.ink; ctx.lineCap = "round"; ctx.lineJoin = "round";
+  lines.forEach((line, li) => {
+    const base = L.firstBase + li * L.lineH - 0.35;
+    for (const it of line.items) {
+      const gx = L.mL + line.x0 + it.x, gy = base + it.dy + it.x * line.slope;
+      ctx.save();
+      ctx.translate(gx * k, gy * k);
+      ctx.rotate(it.rot);
+      ctx.transform(1, 0, -slant, 1, 0, 0);
+      if (it.kind === "own") {
+        strokeGlyph(ctx, it.g, S.size * it.sc * k, S.pen * k, S.pressure);
+      } else {
+        ctx.font = `${it.em * it.sc * k}px "${it.font}"`;
+        ctx.textBaseline = "alphabetic";
+        ctx.fillText(it.ch, 0, 0);
+      }
+      ctx.restore();
+    }
+  });
+  ctx.restore();
+}
+
+/* ================= Vorschau ================= */
+let LAY = null, pageIdx = 0;
+const pageCanvas = $("page");
+function renderPreview() {
+  LAY = layout();
+  pageIdx = Math.min(pageIdx, LAY.pages.length - 1);
+  const stage = pageCanvas.parentElement;
+  const availW = Math.max(240, stage.clientWidth - 40);
+  const cssW = Math.min(availW, 760);
+  const k = cssW / LAY.W;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  pageCanvas.width = Math.round(LAY.W * k * dpr);
+  pageCanvas.height = Math.round(LAY.H * k * dpr);
+  pageCanvas.style.width = cssW + "px";
+  const ctx = pageCanvas.getContext("2d");
+  ctx.clearRect(0, 0, pageCanvas.width, pageCanvas.height);
+  drawPage(ctx, LAY, pageIdx, k * dpr, false);
+  $("pageinfo").textContent = `Seite ${pageIdx + 1} von ${LAY.pages.length}`;
+  $("prev").disabled = pageIdx === 0;
+  $("next").disabled = pageIdx >= LAY.pages.length - 1;
+  $("own-notice").hidden = hasOwn();
+}
+let rpTimer;
+const schedule = () => { cancelAnimationFrame(rpTimer); rpTimer = requestAnimationFrame(renderPreview); };
+
+/* ================= Export ================= */
+const EXPORT_PX_PER_MM = 10; // ~254 dpi
+function renderToCanvas(L, idx, transparent) {
+  const c = document.createElement("canvas");
+  c.width = Math.round(L.W * EXPORT_PX_PER_MM); c.height = Math.round(L.H * EXPORT_PX_PER_MM);
+  drawPage(c.getContext("2d"), L, idx, EXPORT_PX_PER_MM, transparent);
+  return c;
+}
+const toBlob = c => new Promise(res => c.toBlob(res, "image/png"));
+function download(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
+function baseName() {
+  const first = String(S.text).split("\n").find(l => l.trim()) || "Handschrift";
+  return first.trim().slice(0, 40).replace(/[^\p{L}\p{N} _-]+/gu, "").trim().replace(/\s+/g, "-") || "Handschrift";
+}
+async function makePdf() {
+  await fontsReady();
+  const L = layout();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "mm", format: [L.W, L.H], orientation: L.W > L.H ? "landscape" : "portrait", compress: true });
+  for (let i = 0; i < L.pages.length; i++) {
+    if (i > 0) doc.addPage([L.W, L.H], L.W > L.H ? "landscape" : "portrait");
+    const c = renderToCanvas(L, i, false);
+    doc.addImage(c, "PNG", 0, 0, L.W, L.H, undefined, "FAST");
+  }
+  return doc.output("blob");
+}
+function cropCanvas(c, padPx) {
+  const ctx = c.getContext("2d");
+  const { width: w, height: h } = c;
+  const d = ctx.getImageData(0, 0, w, h).data;
+  let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for (let y = 0; y < h; y += 2) for (let x = 0; x < w; x += 2) {
+    if (d[(y * w + x) * 4 + 3] > 8) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  }
+  if (x1 < 0) return null;
+  x0 = Math.max(0, x0 - padPx); y0 = Math.max(0, y0 - padPx); x1 = Math.min(w, x1 + padPx); y1 = Math.min(h, y1 + padPx);
+  const out = document.createElement("canvas"); out.width = x1 - x0; out.height = y1 - y0;
+  out.getContext("2d").drawImage(c, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
+  return out;
+}
+async function busy(btn, fn) {
+  const old = btn.innerHTML; btn.disabled = true; btn.textContent = "Wird erstellt…";
+  try { await fn(); } catch (e) { console.error(e); toast("Das hat nicht geklappt: " + (e.message || e)); }
+  finally { btn.disabled = false; btn.innerHTML = old; }
+}
+$("dl-pdf").onclick = e => busy(e.currentTarget, async () => { download(await makePdf(), baseName() + ".pdf"); toast("PDF erstellt"); });
+$("dl-png").onclick = e => busy(e.currentTarget, async () => {
+  await fontsReady(); const L = layout();
+  download(await toBlob(renderToCanvas(L, pageIdx, false)), `${baseName()}-Seite-${pageIdx + 1}.png`); toast("PNG erstellt");
+});
+$("dl-cut").onclick = e => busy(e.currentTarget, async () => {
+  await fontsReady(); const L = layout();
+  const c = cropCanvas(renderToCanvas(L, pageIdx, true), 20);
+  if (!c) { toast("Auf dieser Seite steht noch nichts."); return; }
+  download(await toBlob(c), `${baseName()}-Schrift.png`); toast("Durchsichtiges PNG erstellt");
+});
+const canShareFiles = (() => { try { return !!(navigator.canShare && navigator.canShare({ files: [new File(["x"], "x.pdf", { type: "application/pdf" })] })); } catch { return false; } })();
+if (canShareFiles) $("share").hidden = false;
+$("share").onclick = e => busy(e.currentTarget, async () => {
+  const file = new File([await makePdf()], baseName() + ".pdf", { type: "application/pdf" });
+  try { await navigator.share({ files: [file], title: baseName() }); }
+  catch (err) { if (err && err.name !== "AbortError") download(file, file.name); }
+});
+
+/* ================= Einstellungen verdrahten ================= */
+function fillSelects() {
+  const st = $("style"), fb = $("fallback");
+  st.innerHTML = `<option value="own">Meine Handschrift</option>` + FONTS.map(([f, n]) => `<option value="${f}">${n}</option>`).join("");
+  fb.innerHTML = FONTS.map(([f, n]) => `<option value="${f}">${n}</option>`).join("");
+  $("inks").innerHTML = INKS.map(([c, n]) => `<button type="button" class="swatch" style="background:${c}" data-ink="${c}" aria-label="${n}" title="${n}"></button>`).join("")
+    + `<input type="color" id="inkcustom" aria-label="Eigene Farbe">`;
+}
+fillSelects();
+const fmt = {
+  size: v => (+v).toFixed(1) + " mm", jitter: v => Math.round(v * 50) + " %", slant: v => v + "°",
+  tracking: v => Math.round(v * 100), wordgap: v => (+v).toFixed(2), pen: v => (+v).toFixed(2) + " mm",
+  lh: v => (+v).toFixed(1) + " mm", margin: v => v + " mm",
+};
+const NUM = ["size", "jitter", "slant", "tracking", "wordgap", "pen", "lh", "margin"];
+function syncUI() {
+  $("text").value = S.text;
+  $("style").value = S.style; $("fallback").value = S.fallback;
+  NUM.forEach(id => { $(id).value = S[id]; $(id + "-o").textContent = fmt[id](S[id]); });
+  $("pressure").checked = !!S.pressure;
+  $("format").value = S.format; $("paper").value = S.paper; $("papercolor").value = S.papercolor;
+  document.querySelectorAll(".swatch").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.ink === S.ink)));
+  $("inkcustom").value = S.ink;
+  $("fallback-wrap").hidden = S.style !== "own";
+}
+syncUI();
+$("text").addEventListener("input", e => { S.text = e.target.value; saveSettings(); schedule(); });
+["style", "fallback", "format", "paper", "papercolor"].forEach(id => $(id).addEventListener("change", e => {
+  S[id] = e.target.value; syncUI(); saveSettings(); ensureFont(S.style === "own" ? S.fallback : S.style).then(schedule); schedule();
+}));
+NUM.forEach(id => $(id).addEventListener("input", e => { S[id] = +e.target.value; $(id + "-o").textContent = fmt[id](S[id]); saveSettings(); schedule(); }));
+$("pressure").addEventListener("change", e => { S.pressure = e.target.checked; saveSettings(); schedule(); });
+$("inks").addEventListener("click", e => { const b = e.target.closest(".swatch"); if (!b) return; S.ink = b.dataset.ink; syncUI(); saveSettings(); schedule(); });
+$("inkcustom").addEventListener("input", e => { S.ink = e.target.value; syncUI(); saveSettings(); schedule(); });
+$("reroll").onclick = () => { S.seed = (Math.random() * 1e9) | 0; saveSettings(); schedule(); };
+$("prev").onclick = () => { pageIdx = Math.max(0, pageIdx - 1); renderPreview(); };
+$("next").onclick = () => { pageIdx++; renderPreview(); };
+window.addEventListener("resize", schedule);
+
+/* ================= Schriften laden ================= */
+function ensureFont(f) {
+  if (!document.fonts || !f) return Promise.resolve();
+  return document.fonts.load(`40px "${f}"`, "AaÄß").then(() => { delete capCache[f]; }).catch(() => {});
+}
+function fontsReady() { return ensureFont(S.style === "own" ? S.fallback : S.style); }
+
+/* ================= Tabs ================= */
+function showTab(which) {
+  const hand = which === "hand";
+  $("view-hand").hidden = !hand; $("view-write").hidden = hand;
+  $("tab-hand").setAttribute("aria-selected", String(hand)); $("tab-write").setAttribute("aria-selected", String(!hand));
+  try { history.replaceState(null, "", hand ? "#handschrift" : "#schreiben"); } catch {}
+  if (hand) { sizePad(); renderGrid(); } else { commitPad(); schedule(); }
+}
+$("tab-hand").onclick = () => showTab("hand");
+$("tab-write").onclick = () => showTab("write");
+$("go-hand").onclick = () => showTab("hand");
+
+/* ================= Schreibfeld ================= */
+const PAD = 400, CAP_Y = 90, X_Y = 170, BASE_Y = 250, DESC_Y = 330, UNIT = BASE_Y - CAP_Y;
+const pad = $("pad"), pctx = pad.getContext("2d");
+let curCh = "a", curVar = 0, strokes = [], dirty = false, drawing = null, penSeen = false, autoTimer = null;
+
+function sizePad() {
+  const css = pad.clientWidth || 400;
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  pad.width = Math.round(css * dpr); pad.height = Math.round(css * dpr);
+  drawPad();
+}
+window.addEventListener("resize", () => { if (!$("view-hand").hidden) sizePad(); });
+
+function drawPad() {
+  const k = pad.width / PAD;
+  pctx.setTransform(1, 0, 0, 1, 0, 0);
+  pctx.fillStyle = "#ffffff"; pctx.fillRect(0, 0, pad.width, pad.height);
+  pctx.setTransform(k, 0, 0, k, 0, 0);
+  const hline = (y, color, dash, w) => { pctx.strokeStyle = color; pctx.lineWidth = w; pctx.setLineDash(dash); pctx.beginPath(); pctx.moveTo(14, y); pctx.lineTo(PAD - 14, y); pctx.stroke(); };
+  hline(CAP_Y, "#c9d0e2", [6, 6], 1.2);
+  hline(X_Y, "#d7dcea", [3, 6], 1.2);
+  hline(BASE_Y, "#2747b8", [], 2);
+  hline(DESC_Y, "#c9d0e2", [6, 6], 1.2);
+  pctx.setLineDash([]);
+  if ($("ghost").checked) {
+    pctx.fillStyle = "rgba(39,71,184,.08)";
+    pctx.font = `${UNIT / 0.72}px Manrope, system-ui, sans-serif`;
+    pctx.textAlign = "center"; pctx.textBaseline = "alphabetic";
+    pctx.fillText(curCh, PAD / 2, BASE_Y);
+  }
+  pctx.strokeStyle = "#1a2140"; pctx.fillStyle = "#1a2140"; pctx.lineCap = "round"; pctx.lineJoin = "round";
+  const g = { s: strokes.map(st => st.map(([x, y, p]) => [x, y - BASE_Y, p])) };
+  pctx.save(); pctx.translate(0, BASE_Y);
+  strokeGlyph(pctx, g, 1, 9, true);
+  pctx.restore();
+}
+function padPoint(e) {
+  const r = pad.getBoundingClientRect();
+  const p = e.pointerType === "pen" ? (e.pressure || 0.5) : 0.5;
+  return [ (e.clientX - r.left) / r.width * PAD, (e.clientY - r.top) / r.height * PAD, Math.min(1, Math.max(0, p)) ];
+}
+pad.addEventListener("pointerdown", e => {
+  if (e.pointerType === "pen") penSeen = true;
+  if (e.pointerType === "touch" && penSeen) return;   // Handballen ignorieren, sobald ein Stift benutzt wurde
+  e.preventDefault();
+  clearTimeout(autoTimer);
+  pad.setPointerCapture(e.pointerId);
+  drawing = { id: e.pointerId, pts: [padPoint(e)] };
+  strokes.push(drawing.pts); dirty = true; drawPad();
+});
+pad.addEventListener("pointermove", e => {
+  if (!drawing || e.pointerId !== drawing.id) return;
+  e.preventDefault();
+  const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+  for (const ev of (evs.length ? evs : [e])) {
+    const p = padPoint(ev), last = drawing.pts[drawing.pts.length - 1];
+    if (Math.hypot(p[0] - last[0], p[1] - last[1]) > 1.2) drawing.pts.push(p);
+  }
+  drawPad();
+});
+const endStroke = e => {
+  if (!drawing || e.pointerId !== drawing.id) return;
+  drawing = null; drawPad(); renderProbe(true);
+  if ($("autonext").checked) { clearTimeout(autoTimer); autoTimer = setTimeout(() => saveAndNext(), 1100); }
+};
+pad.addEventListener("pointerup", endStroke);
+pad.addEventListener("pointercancel", endStroke);
+pad.addEventListener("touchstart", e => e.preventDefault(), { passive: false });
+
+function normalize(strs) {
+  const out = strs.map(st => {
+    const pts = [];
+    for (const [x, y, p] of st) {
+      const q = [x / UNIT, (y - BASE_Y) / UNIT, p];
+      const l = pts[pts.length - 1];
+      if (!l || Math.hypot(q[0] - l[0], q[1] - l[1]) > 0.006) pts.push(q);
+    }
+    return pts;
+  }).filter(st => st.length);
+  if (!out.length) return null;
+  let minX = Infinity, maxX = -Infinity;
+  out.forEach(st => st.forEach(([x]) => { minX = Math.min(minX, x); maxX = Math.max(maxX, x); }));
+  const r3 = v => Math.round(v * 1000) / 1000;
+  return { s: out.map(st => st.map(([x, y, p]) => [r3(x - minX), r3(y), Math.round(p * 100) / 100])), w: r3(maxX - minX) };
+}
+function denormalize(g) {
+  // zurück ins Schreibfeld, waagerecht mittig
+  const off = (PAD - g.w * UNIT) / 2;
+  return g.s.map(st => st.map(([x, y, p]) => [x * UNIT + off, y * UNIT + BASE_Y, p]));
+}
+function commitPad() {
+  if (!dirty) return;
+  const g = normalize(strokes);
+  const list = hand.g[curCh] || [];
+  if (g) list[curVar] = g; else list.splice(curVar, 1);
+  if (list.length) hand.g[curCh] = list; else delete hand.g[curCh];
+  dirty = false; saveHand(); updateCell(curCh); updateProgress();
+}
+function openChar(ch, v = 0) {
+  commitPad();
+  curCh = ch;
+  const list = hand.g[ch] || [];
+  curVar = Math.min(v, list.length);
+  strokes = list[curVar] ? denormalize(list[curVar]) : [];
+  $("cur-ch").textContent = ch;
+  $("cur-what").textContent = WHAT[ch] || "";
+  document.querySelectorAll(".cell").forEach(c => c.setAttribute("aria-current", String(c.dataset.ch === ch)));
+  renderVariants(); drawPad(); renderProbe(true);
+}
+function renderVariants() {
+  const list = hand.g[curCh] || [];
+  const n = Math.min(3, list.length + 1);
+  let h = "";
+  for (let i = 0; i < n; i++) {
+    const has = i < list.length;
+    h += `<button type="button" data-v="${i}" class="${has ? "has" : ""}" aria-pressed="${i === curVar}" title="${has ? "Variante " + (i + 1) : "Neue Variante"}">${has ? i + 1 : "+"}</button>`;
+  }
+  $("variants").innerHTML = h;
+}
+$("variants").addEventListener("click", e => { const b = e.target.closest("button"); if (b) openChar(curCh, +b.dataset.v); });
+$("undo").onclick = () => { strokes.pop(); dirty = true; drawPad(); renderProbe(true); };
+$("clear").onclick = () => { strokes = []; dirty = true; drawPad(); renderProbe(true); };
+$("ghost").onchange = drawPad;
+function saveAndNext() {
+  commitPad();
+  const i = ALL.indexOf(curCh);
+  // nächstes noch leeres Zeichen, sonst einfach das nächste
+  let next = ALL.slice(i + 1).find(c => !hand.g[c]);
+  if (!next) next = ALL[(i + 1) % ALL.length];
+  openChar(next, 0);
+  const cell = document.querySelector(`.cell[data-ch="${CSS.escape(next)}"]`);
+  if (cell && cell.scrollIntoViewIfNeeded) cell.scrollIntoViewIfNeeded();
+}
+$("savenext").onclick = saveAndNext;
+document.addEventListener("keydown", e => {
+  if ($("view-hand").hidden || e.target.matches("input,textarea,select")) return;
+  if (e.key === "Enter") { e.preventDefault(); saveAndNext(); }
+  if ((e.metaKey || e.ctrlKey) && e.key === "z") { e.preventDefault(); $("undo").click(); }
+});
+
+/* ---------- Zeichenübersicht ---------- */
+function renderGrid() {
+  $("cgroups").innerHTML = GROUPS.map(g => `<div class="cgroup"><h3>${g.name}</h3><div class="cgrid">${
+    [...g.chars].map(c => `<button type="button" class="cell" data-ch="${c.replace(/"/g, "&quot;")}" aria-label="Zeichen ${c.replace(/"/g, "&quot;")}"><span class="ch">${c.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</span><canvas></canvas><span class="n"></span></button>`).join("")
+  }</div></div>`).join("");
+  ALL.forEach(updateCell);
+  updateProgress();
+  document.querySelectorAll(".cell").forEach(c => c.setAttribute("aria-current", String(c.dataset.ch === curCh)));
+}
+$("cgroups").addEventListener("click", e => { const c = e.target.closest(".cell"); if (c) openChar(c.dataset.ch, 0); });
+function updateCell(ch) {
+  const cell = document.querySelector(`.cell[data-ch="${CSS.escape(ch)}"]`);
+  if (!cell) return;
+  const list = hand.g[ch] || [];
+  cell.classList.toggle("done", list.length > 0);
+  cell.querySelector(".n").textContent = list.length > 1 ? list.length : "";
+  const cv = cell.querySelector("canvas");
+  const size = 92; cv.width = size; cv.height = size;
+  const ctx = cv.getContext("2d"); ctx.clearRect(0, 0, size, size);
+  if (!list.length) return;
+  const g = list[0], u = size * 0.42;
+  ctx.save();
+  ctx.translate((size - g.w * u) / 2, size * 0.66);
+  ctx.strokeStyle = ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--ink").trim() || "#1a2140";
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  strokeGlyph(ctx, g, u, 3.2, false);
+  ctx.restore();
+}
+function updateProgress() {
+  const n = ownCount();
+  $("prog-t").textContent = `${n} von ${ALL.length} Zeichen`;
+  $("prog-b").style.width = (n / ALL.length * 100) + "%";
+}
+
+/* ---------- Probezeile ---------- */
+function renderProbe(includeCurrent) {
+  const cv = $("probe");
+  const cssW = cv.clientWidth || 400, cssH = 80, dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = cssW * dpr; cv.height = cssH * dpr;
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cssW, cssH);
+  const live = includeCurrent ? normalize(strokes) : null;
+  const unit = 30, base = 56;
+  let x = 10;
+  ctx.strokeStyle = ctx.fillStyle = "#1f3a9e"; ctx.lineCap = "round"; ctx.lineJoin = "round";
+  for (const ch of $("probe-text").value) {
+    if (ch === " ") { x += unit * 0.45; continue; }
+    let g = (hand.g[ch] || [])[0];
+    if (ch === curCh && live) g = live;
+    if (g) {
+      ctx.save(); ctx.translate(x, base); strokeGlyph(ctx, g, unit, 2.2, true); ctx.restore();
+      x += g.w * unit + unit * 0.12;
+    } else {
+      ctx.font = `${unit * 1.35}px "Caveat", cursive`; ctx.globalAlpha = .35;
+      ctx.fillText(ch, x, base); x += ctx.measureText(ch).width + 2; ctx.globalAlpha = 1;
+    }
+    if (x > cssW) break;
+  }
+}
+$("probe-text").addEventListener("input", () => renderProbe(true));
+
+/* ---------- Sichern / Laden / Schriftart ---------- */
+$("exp-json").onclick = () => {
+  commitPad();
+  if (!hasOwn()) { toast("Du hast noch keine Zeichen geschrieben."); return; }
+  download(new Blob([JSON.stringify({ app: "federstrich", ...hand })], { type: "application/json" }), "meine-handschrift.json");
+};
+$("imp-json").onchange = async e => {
+  const f = e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  try {
+    const data = JSON.parse(await f.text());
+    if (!data || typeof data.g !== "object") throw new Error("keine Handschrift-Sicherung");
+    hand = { v: 1, g: data.g }; saveHand(); renderGrid(); openChar(curCh, 0); dirty = false;
+    toast(`${ownCount()} Zeichen geladen`);
+  } catch (err) { toast("Die Datei ist keine Federstrich-Sicherung."); }
+};
+$("wipe").onclick = () => { $("wipe-confirm").hidden = false; };
+$("wipe-no").onclick = () => { $("wipe-confirm").hidden = true; };
+$("wipe-yes").onclick = () => {
+  hand = { v: 1, g: {} }; saveHand(); strokes = []; dirty = false; $("wipe-confirm").hidden = true;
+  renderGrid(); openChar("a", 0); toast("Handschrift gelöscht");
+};
+function buildFont() {
+  const CAP = 700, HW = 34, LSB = 50;
+  const notdef = new opentype.Glyph({ name: ".notdef", unicode: 0, advanceWidth: 500, path: new opentype.Path() });
+  const space = new opentype.Glyph({ name: "space", unicode: 32, advanceWidth: 300, path: new opentype.Path() });
+  const glyphs = [notdef, space];
+  const poly = (path, pts) => {
+    let a = 0; for (let i = 0; i < pts.length; i++) { const [x1, y1] = pts[i], [x2, y2] = pts[(i + 1) % pts.length]; a += x1 * y2 - x2 * y1; }
+    if (a < 0) pts.reverse();
+    path.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) path.lineTo(pts[i][0], pts[i][1]); path.close();
+  };
+  const dot = (path, x, y, r) => { const p = []; for (let i = 0; i < 10; i++) { const t = i / 10 * Math.PI * 2; p.push([x + Math.cos(t) * r, y + Math.sin(t) * r]); } poly(path, p); };
+  for (const ch of Object.keys(hand.g)) {
+    const g = hand.g[ch][0]; if (!g) continue;
+    const path = new opentype.Path();
+    for (const st of g.s) {
+      const P = st.map(([x, y, p]) => [Math.round(x * CAP + LSB + HW), Math.round(-y * CAP), HW * (0.6 + 0.8 * p)]);
+      P.forEach(([x, y, r]) => dot(path, x, y, r));
+      for (let i = 0; i < P.length - 1; i++) {
+        const [ax, ay, ar] = P[i], [bx, by, br] = P[i + 1];
+        const dx = bx - ax, dy = by - ay, len = Math.hypot(dx, dy); if (len < 1) continue;
+        const nx = -dy / len, ny = dx / len;
+        poly(path, [[ax + nx * ar, ay + ny * ar], [bx + nx * br, by + ny * br], [bx - nx * br, by - ny * br], [ax - nx * ar, ay - ny * ar]]);
+      }
+    }
+    glyphs.push(new opentype.Glyph({ name: "u" + ch.codePointAt(0).toString(16).toUpperCase(), unicode: ch.codePointAt(0), advanceWidth: Math.round(g.w * CAP + 2 * LSB + 2 * HW), path }));
+  }
+  return new opentype.Font({ familyName: "Meine Handschrift", styleName: "Regular", unitsPerEm: 1000, ascender: 900, descender: -300, glyphs });
+}
+$("exp-font").onclick = () => {
+  commitPad();
+  if (!hasOwn()) { toast("Schreib zuerst ein paar Zeichen."); return; }
+  try { download(new Blob([buildFont().toArrayBuffer()], { type: "font/otf" }), "MeineHandschrift.otf"); toast("Schriftart erstellt"); }
+  catch (e) { console.error(e); toast("Schriftart konnte nicht erstellt werden."); }
+};
+window.addEventListener("pagehide", commitPad);
+document.addEventListener("visibilitychange", () => { if (document.hidden) commitPad(); });
+
+/* ================= Start ================= */
+renderGrid();
+openChar(curCh, 0);
+showTab(location.hash === "#handschrift" ? "hand" : "write");
+renderPreview();
+Promise.all(FONTS.map(([f]) => ensureFont(f))).then(schedule);
+</script>
+</body>
+</html>

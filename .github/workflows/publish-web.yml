@@ -8,6 +8,7 @@ on:
   push:
     paths:
       - "static/**"
+      - "handschrift/**"
       - ".github/workflows/publish-web.yml"
 
 permissions:
@@ -33,6 +34,8 @@ jobs:
           mkdir -p _site
           cp -R static _site/static
           cp static/sw.js _site/sw.js
+          # Federstrich: Handschrift-Website unter /handschrift/
+          cp -R handschrift _site/handschrift
           # the in-browser AI library, served from the website itself (works offline, no CDN needed)
           mkdir -p _site/static/vendor
           npm pack @mlc-ai/web-llm@0.2.79 --silent
